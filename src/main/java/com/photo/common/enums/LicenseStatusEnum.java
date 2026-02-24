@@ -8,7 +8,7 @@ import lombok.Getter;
  */
 @Getter
 @AllArgsConstructor
-public enum LicenseStatus {
+public enum LicenseStatusEnum {
 
     PENDING_ADMIN("pending_admin", "待管理员审核"),
     PENDING_PHOTOGRAPHER("pending_photographer", "待摄影师确认"),

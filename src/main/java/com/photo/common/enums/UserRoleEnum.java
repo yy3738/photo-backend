@@ -4,14 +4,16 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 /**
- * 积分流水类型
+ * 用户角色
  */
 @Getter
 @AllArgsConstructor
-public enum PointsType {
+public enum
+UserRoleEnum {
 
-    EARN("earn", "收入"),
-    SPEND("spend", "支出");
+    BUYER("buyer", "买家"),
+    PHOTOGRAPHER("photographer", "摄影师"),
+    ADMIN("admin", "管理员");
 
     private final String value;
     private final String desc;

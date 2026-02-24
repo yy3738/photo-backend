@@ -8,7 +8,7 @@ import lombok.Getter;
  */
 @Getter
 @AllArgsConstructor
-public enum LicensePurpose {
+public enum LicensePurposeEnum {
 
     COMMERCIAL("commercial", "商业广告"),
     NEWS("news", "新闻媒体"),

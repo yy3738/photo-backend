@@ -8,7 +8,7 @@ import lombok.Getter;
  */
 @Getter
 @AllArgsConstructor
-public enum PhotoStatus {
+public enum PhotoStatusEnum {
 
     PENDING("pending", "待审核"),
     APPROVED("approved", "已上架"),
