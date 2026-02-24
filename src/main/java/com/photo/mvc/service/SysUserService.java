@@ -1,0 +1,149 @@
+package com.photo.mvc.service;
+
+import cn.dev33.satoken.stp.StpUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.photo.common.exception.BizException;
+import com.photo.common.result.PageQuery;
+import com.photo.common.result.PageResult;
+import com.photo.mvc.entity.model.*;
+import com.photo.mvc.entity.vo.UserVO;
+import com.photo.mvc.mapper.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class SysUserService {
+
+    private final SysUserMapper sysUserMapper;
+    private final BizOrderMapper bizOrderMapper;
+    private final BizPointsRecordMapper bizPointsRecordMapper;
+    private final BizLicenseMapper bizLicenseMapper;
+
+    private static final DateTimeFormatter ISO_FMT = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+
+    public UserVO getCurrentUser() {
+        Long userId = StpUtil.getLoginIdAsLong();
+        SysUserPO user = sysUserMapper.selectById(userId);
+        if (user == null) {
+            throw new BizException(404, "用户不存在");
+        }
+        return toUserVO(user);
+    }
+
+    public Map<String, String> enablePhotographer() {
+        Long userId = StpUtil.getLoginIdAsLong();
+        SysUserPO user = sysUserMapper.selectById(userId);
+
+        if (!"buyer".equals(user.getRole())) {
+            throw new BizException(400, "仅买家可开启摄影师模式");
+        }
+
+        user.setRole("photographer");
+        sysUserMapper.updateById(user);
+
+        Map<String, String> result = new HashMap<>();
+        result.put("role", "photographer");
+        return result;
+    }
+
+    public PageResult<Map<String, Object>> getPointsHistory(PageQuery query) {
+        Long userId = StpUtil.getLoginIdAsLong();
+        Page<BizPointsRecordPO> page = new Page<>(query.getPage(), query.getPageSize());
+
+        bizPointsRecordMapper.selectPage(page,
+                new LambdaQueryWrapper<BizPointsRecordPO>()
+                        .eq(BizPointsRecordPO::getUserId, userId)
+                        .orderByDesc(BizPointsRecordPO::getCreateTime));
+
+        List<Map<String, Object>> list = page.getRecords().stream().map(r -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", String.valueOf(r.getId()));
+            map.put("type", r.getType());
+            map.put("amount", r.getAmount());
+            map.put("balance", r.getBalance());
+            map.put("remark", r.getRemark());
+            map.put("relatedPhotoId", r.getRelatedPhotoId() != null ? String.valueOf(r.getRelatedPhotoId()) : null);
+            map.put("relatedPhotoTitle", r.getRelatedPhotoTitle());
+            map.put("createdAt", r.getCreateTime() != null ? r.getCreateTime().format(ISO_FMT) : null);
+            return map;
+        }).collect(Collectors.toList());
+
+        return PageResult.of(list, page.getTotal(), query.getPage(), query.getPageSize());
+    }
+
+    public PageResult<Map<String, Object>> getOrders(PageQuery query) {
+        Long userId = StpUtil.getLoginIdAsLong();
+        Page<BizOrderPO> page = new Page<>(query.getPage(), query.getPageSize());
+
+        bizOrderMapper.selectPage(page,
+                new LambdaQueryWrapper<BizOrderPO>()
+                        .eq(BizOrderPO::getUserId, userId)
+                        .orderByDesc(BizOrderPO::getCreateTime));
+
+        List<Map<String, Object>> list = page.getRecords().stream().map(o -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", String.valueOf(o.getId()));
+            map.put("photoId", String.valueOf(o.getPhotoId()));
+            map.put("photoTitle", o.getPhotoTitle());
+            map.put("photoPreviewUrl", o.getPhotoPreviewUrl());
+            map.put("price", o.getPrice());
+            map.put("createdAt", o.getCreateTime() != null ? o.getCreateTime().format(ISO_FMT) : null);
+            return map;
+        }).collect(Collectors.toList());
+
+        return PageResult.of(list, page.getTotal(), query.getPage(), query.getPageSize());
+    }
+
+    public PageResult<Map<String, Object>> getLicenses(String status, PageQuery query) {
+        Long userId = StpUtil.getLoginIdAsLong();
+        Page<BizLicensePO> page = new Page<>(query.getPage(), query.getPageSize());
+
+        LambdaQueryWrapper<BizLicensePO> wrapper = new LambdaQueryWrapper<BizLicensePO>()
+                .eq(BizLicensePO::getApplicantId, userId)
+                .eq(status != null && !status.isEmpty(), BizLicensePO::getStatus, status)
+                .orderByDesc(BizLicensePO::getCreateTime);
+
+        bizLicenseMapper.selectPage(page, wrapper);
+
+        List<Map<String, Object>> list = page.getRecords().stream().map(l -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", String.valueOf(l.getId()));
+            map.put("photoId", String.valueOf(l.getPhotoId()));
+            map.put("photoTitle", l.getPhotoTitle());
+            map.put("photoPreviewUrl", l.getPhotoPreviewUrl());
+            map.put("purpose", l.getPurpose());
+            map.put("scene", l.getScene());
+            map.put("duration", l.getDuration());
+            map.put("contact", l.getContact());
+            map.put("status", l.getStatus());
+            map.put("rejectReason", l.getRejectReason());
+            map.put("certificateUrl", l.getCertificateUrl());
+            map.put("createdAt", l.getCreateTime() != null ? l.getCreateTime().format(ISO_FMT) : null);
+            map.put("updatedAt", l.getUpdateTime() != null ? l.getUpdateTime().format(ISO_FMT) : null);
+            return map;
+        }).collect(Collectors.toList());
+
+        return PageResult.of(list, page.getTotal(), query.getPage(), query.getPageSize());
+    }
+
+    private UserVO toUserVO(SysUserPO user) {
+        UserVO vo = new UserVO();
+        vo.setId(String.valueOf(user.getId()));
+        vo.setOpenid(user.getOpenid());
+        vo.setNickname(user.getNickname());
+        vo.setAvatar(user.getAvatar());
+        vo.setRole(user.getRole());
+        vo.setPoints(user.getPoints());
+        vo.setIsBanned(user.getIsBanned() == 1);
+        vo.setCreatedAt(user.getCreateTime() != null ? user.getCreateTime().format(ISO_FMT) : null);
+        return vo;
+    }
+}

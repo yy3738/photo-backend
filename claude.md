@@ -25,25 +25,27 @@
 
 ```
 src/main/java/com/photo/
-├── common/              # 通用模块
-│   ├── result/          # R<T>、PageQuery、PageResult
-│   └── exception/       # BizException、GlobalExceptionHandler
-├── config/              # MybatisPlusConfig、SaTokenConfig、CorsConfig
-├── enums/               # UserRole、PhotoStatus、LicenseStatus、PointsType
-└── module/
-    ├── auth/            # 微信登录认证
-    ├── category/        # 分类标签浏览
-    ├── photo/           # 作品浏览/搜索/购买/下载
-    ├── user/            # 用户信息/积分/订单/授权记录
-    ├── license/         # 授权申请/证书下载
-    ├── upload/          # OSS 直传签名
-    ├── studio/          # 摄影师工作台
-    ├── admin/           # 管理后台
-    ├── order/           # 订单/积分流水 Entity+Mapper
-    └── system/          # RBAC 相关 Entity+Mapper（Org/Role/Menu/UserRole/RoleMenu）
+├── common/                  # 通用模块
+│   ├── config/              # MybatisPlusConfig、SaTokenConfig、CorsConfig
+│   ├── enums/               # UserRole、PhotoStatus、LicenseStatus、PointsType、MenuType、LicensePurpose
+│   ├── result/              # R<T>、PageQuery、PageResult
+│   └── exception/           # BizException、GlobalExceptionHandler
+└── mvc/                     # 业务层（按层级分包，类平铺）
+    ├── controller/          # 8 个 Controller 平铺
+    ├── entity/              # 实体总包
+    │   ├── model/           # PO 实体（Sys/Biz 前缀 + PO 后缀，如 SysUserPO、BizPhotoPO）
+    │   ├── req/             # 请求对象（XxxReq，如 WxLoginReq、StudioPhotoReq）
+    │   └── vo/              # 响应对象（XxxVO，如 PhotoVO、LoginVO）
+    ├── mapper/              # Mapper 接口（Sys/Biz 前缀，如 SysUserMapper、BizPhotoMapper）
+    └── service/             # Service 类（Sys/Biz 前缀，如 SysUserService、BizPhotoService、AuthService、AdminService）
 ```
 
-每个 module 下统一 `entity/` `mapper/` `service/` `controller/` `dto/` 分层。
+### 命名规则
+- entity/model：`Sys` 前缀 = 系统表，`Biz` 前缀 = 业务表，统一 `PO` 后缀
+- entity/req：请求 DTO，`XxxReq` 后缀（原 ReqDTO → Req）
+- entity/vo：响应 DTO，`XxxVO` 后缀（原 RespDTO → VO）
+- mapper：与 PO 对应，`SysXxxMapper` / `BizXxxMapper`
+- service：与领域对应，`SysXxxService` / `BizXxxService`（AuthService、AdminService 不加前缀）
 
 ## 关键约定
 

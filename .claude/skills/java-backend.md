@@ -24,7 +24,7 @@
 
 ## 项目结构规范
 
-采用经典分层架构，包名以 `com.photo` 为根包：
+采用按层级分包架构，包名以 `com.photo` 为根包，每个包内平铺所有相关类：
 
 ```
 src/main/java/com/photo/
@@ -36,26 +36,14 @@ src/main/java/com/photo/
 │   ├── exception/                     # 自定义异常 + 全局异常处理器
 │   ├── result/                        # 统一响应封装（R<T>）
 │   └── utils/                         # 工具类
-├── module/                            # 业务模块（按领域划分）
-│   ├── auth/                          # 认证模块
-│   │   ├── controller/
-│   │   ├── service/
-│   │   └── dto/
-│   ├── user/                          # 用户模块
-│   │   ├── controller/
-│   │   ├── service/
-│   │   ├── mapper/
-│   │   ├── entity/
-│   │   └── dto/
-│   ├── photo/                         # 作品模块
-│   ├── order/                         # 订单模块
-│   ├── license/                       # 授权模块
-│   ├── category/                      # 分类标签模块
-│   ├── upload/                        # 上传模块
-│   └── admin/                         # 管理员模块
-│       ├── controller/
-│       ├── service/
-│       └── dto/
+└── mvc/                               # 业务层（按层级分包，类平铺）
+    ├── controller/                    # 所有 Controller 平铺
+    ├── entity/                        # 实体总包
+    │   ├── model/                     # PO 实体（Sys/Biz 前缀 + PO 后缀）
+    │   ├── req/                       # 请求对象（XxxReq 后缀）
+    │   └── vo/                        # 响应对象（XxxVO 后缀）
+    ├── mapper/                        # 所有 Mapper 接口平铺（Sys/Biz 前缀）
+    └── service/                       # 所有 Service 类平铺（Sys/Biz 前缀）
 src/main/resources/
 ├── application.yml                    # 主配置
 ├── application-dev.yml                # 开发环境配置
@@ -63,12 +51,27 @@ src/main/resources/
 └── mapper/                            # MyBatis XML 映射文件（如需要）
 ```
 
-每个业务模块内部结构：
+### 分包命名规则
+
+| 包 | 前缀规则 | 后缀规则 | 示例 |
+|---|---------|---------|------|
+| entity/model | `Sys` = 系统表，`Biz` = 业务表 | `PO` | `SysUserPO`、`BizPhotoPO` |
+| entity/req | 按功能命名 | `Req` | `WxLoginReq`、`StudioPhotoReq` |
+| entity/vo | 按功能命名 | `VO` | `PhotoVO`、`LoginVO` |
+| mapper | 与 PO 对应 | `Mapper` | `SysUserMapper`、`BizPhotoMapper` |
+| service | 与领域对应 | `Service` | `SysUserService`、`BizPhotoService` |
+
+- `Sys` 前缀：系统基础表（用户、角色、菜单、组织、分类、标签等）
+- `Biz` 前缀：业务表（作品、订单、授权、积分流水等）
+- 跨领域 Service（如 `AuthService`、`AdminService`）不加 Sys/Biz 前缀
+
+### 各层职责
 - `controller/` — 控制器，只做参数接收、校验和响应返回
-- `service/` — 业务接口 + 实现类（`XxxService` 接口 + `XxxServiceImpl` 实现）
+- `service/` — 业务逻辑类（直接写实现，不强制接口+实现类拆分）
 - `mapper/` — MyBatis-Plus Mapper 接口（继承 `BaseMapper<T>`）
-- `entity/` — 数据库实体类（与表一一对应）
-- `dto/` — 请求/响应 DTO（`XxxReqDTO`、`XxxRespDTO`）
+- `entity/model/` — 数据库 PO 实体类（与表一一对应）
+- `entity/req/` — 请求参数对象，带 Jakarta Validation 校验注解
+- `entity/vo/` — 响应视图对象，纯数据载体
 
 ---
 
@@ -76,7 +79,7 @@ src/main/resources/
 
 ### 基本原则
 - 基本符合第三范式（3NF），适当允许冗余以优化查询性能（需注释说明）
-- 表名使用 `snake_case`，统一前缀 `t_`（如 `t_user`、`t_photo`）
+- 表名使用 `snake_case`，系统表前缀 `t_sys_`，业务表前缀 `t_biz_`（如 `t_sys_user`、`t_biz_photo`）
 - 字段名使用 `snake_case`
 - 主键统一使用 `id`，类型 `BIGINT`，MyBatis-Plus 雪花算法生成
 - 所有表必须包含以下公共字段：
@@ -183,16 +186,17 @@ public class SaTokenConfig implements WebMvcConfigurer {
 @RequiredArgsConstructor
 public class PhotoController {
 
-    private final PhotoService photoService;
+    private final BizPhotoService bizPhotoService;
 
     @GetMapping
-    public R<PageResult<PhotoRespDTO>> list(PhotoQueryDTO query) {
-        return R.ok(photoService.listPhotos(query));
+    public R<PageResult<PhotoVO>> list(PageQuery query) {
+        return R.ok(bizPhotoService.listPhotos(null, null, query));
     }
 
+    @SaCheckLogin
     @PostMapping("/{id}/buy")
-    public R<BuyRespDTO> buy(@PathVariable Long id) {
-        return R.ok(photoService.buyPhoto(id));
+    public R<BuyPhotoVO> buy(@PathVariable Long id) {
+        return R.ok(bizPhotoService.buyPhoto(id));
     }
 }
 ```
@@ -204,43 +208,45 @@ public class PhotoController {
 ### Service 规范
 
 ```java
-public interface PhotoService extends IService<Photo> {
-    PageResult<PhotoRespDTO> listPhotos(PhotoQueryDTO query);
-    BuyRespDTO buyPhoto(Long photoId);
-}
-
 @Service
 @RequiredArgsConstructor
-public class PhotoServiceImpl extends ServiceImpl<PhotoMapper, Photo> implements PhotoService {
+public class BizPhotoService {
 
-    private final OrderService orderService;
+    private final BizPhotoMapper bizPhotoMapper;
+    private final BizOrderMapper bizOrderMapper;
+    private final SysUserMapper sysUserMapper;
 
-    @Override
     @Transactional(rollbackFor = Exception.class)
-    public BuyRespDTO buyPhoto(Long photoId) {
+    public BuyPhotoVO buyPhoto(Long photoId) {
         // 业务逻辑
     }
 }
 ```
 
-- Service 接口继承 `IService<T>`，实现类继承 `ServiceImpl<M, T>`
+- Service 直接写实现类，不强制接口+实现类拆分
 - 涉及多表写操作必须加 `@Transactional(rollbackFor = Exception.class)`
 - 复杂查询使用 MyBatis-Plus 的 `LambdaQueryWrapper`
 
-### Entity 规范
+### Entity（PO）规范
 
 ```java
 @Data
-@TableName("t_photo")
-public class Photo {
+@TableName("t_biz_photo")
+public class BizPhotoPO {
     @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
     private String title;
     private String description;
-    private Long photographerId;
+    private Long userId;
     private String status;
     private Integer price;
+
+    private Long createBy;
+    private Long updateBy;
+
+    @Version
+    private Integer version;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
@@ -253,17 +259,19 @@ public class Photo {
 }
 ```
 
+- 包路径：`com.photo.mvc.entity.model`
+- 类名：`Sys/Biz` 前缀 + `PO` 后缀
 - 使用 `@TableId(type = IdType.ASSIGN_ID)` 雪花算法主键
-- 使用 `@TableLogic` 逻辑删除
+- 使用 `@TableLogic` 逻辑删除，`@Version` 乐观锁
 - 时间字段使用 `LocalDateTime`
-- 不在 Entity 上加业务逻辑
+- 不在 PO 上加业务逻辑
 
-### DTO 规范
+### Req（请求对象）规范
 
 ```java
-// 请求 DTO — 带校验注解
+// 包路径：com.photo.mvc.entity.req
 @Data
-public class PhotoCreateReqDTO {
+public class StudioPhotoReq {
     @NotBlank(message = "标题不能为空")
     @Size(max = 50, message = "标题不超过50字")
     private String title;
@@ -280,22 +288,30 @@ public class PhotoCreateReqDTO {
     @NotNull @Range(min = 10, max = 9999, message = "定价范围10~9999")
     private Integer price;
 }
+```
 
-// 响应 DTO — 纯数据载体
+- 类名以 `Req` 结尾（不再用 `ReqDTO`）
+- 使用 Jakarta Validation 注解校验
+
+### VO（响应对象）规范
+
+```java
+// 包路径：com.photo.mvc.entity.vo
 @Data
-public class PhotoRespDTO {
-    private Long id;
+public class PhotoVO {
+    private String id;
     private String title;
     private String previewUrl;
     private String categoryName;
     private Integer price;
-    private LocalDateTime createTime;
+    private String createdAt;
 }
 ```
 
-- 请求和响应 DTO 分开定义，不复用 Entity
-- 请求 DTO 使用 Jakarta Validation 注解校验
-- Entity 与 DTO 之间使用 BeanUtil 或手动转换
+- 类名以 `VO` 结尾（不再用 `RespDTO`）
+- 纯数据载体，ID 返回 String 防精度丢失
+- Req 和 VO 分开定义，不复用 PO
+- PO 与 Req/VO 之间使用 BeanUtil 或手动转换
 
 ### 分页封装
 
@@ -386,13 +402,15 @@ public class GlobalExceptionHandler {
 /**
  * 作品服务
  */
-public interface PhotoService extends IService<Photo> {
+@Service
+@RequiredArgsConstructor
+public class BizPhotoService {
 
     /**
      * 积分购买作品
      * 扣减买家积分 + 增加摄影师积分（扣除10%平台抽佣），原子操作
      */
-    BuyRespDTO buyPhoto(Long photoId);
+    public BuyPhotoVO buyPhoto(Long photoId) { ... }
 }
 ```
 
@@ -402,7 +420,7 @@ public interface PhotoService extends IService<Photo> {
 
 ```java
 @Configuration
-@MapperScan("com.photo.module.*.mapper")
+@MapperScan("com.photo.mvc.mapper")
 public class MybatisPlusConfig {
 
     /**

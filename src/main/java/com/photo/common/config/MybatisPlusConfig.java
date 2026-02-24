@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
  * MyBatis-Plus 配置
  */
 @Configuration
-@MapperScan("com.photo.module.*.mapper")
+@MapperScan("com.photo.mvc.mapper")
 public class MybatisPlusConfig {
 
     /**
