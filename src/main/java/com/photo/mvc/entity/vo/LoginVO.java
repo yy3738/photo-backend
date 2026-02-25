@@ -3,6 +3,8 @@ package com.photo.mvc.entity.vo;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 @Schema(description = "登录结果")
 public class LoginVO {
@@ -23,8 +25,8 @@ public class LoginVO {
         private String nickname;
         @Schema(description = "头像URL")
         private String avatar;
-        @Schema(description = "角色")
-        private String role;
+        @Schema(description = "角色列表")
+        private List<String> roles;
         @Schema(description = "积分余额")
         private Integer points;
     }

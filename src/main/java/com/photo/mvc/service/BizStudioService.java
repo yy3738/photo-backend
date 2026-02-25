@@ -31,12 +31,11 @@ public class BizStudioService {
     private final BizOrderMapper bizOrderMapper;
     private final BizPointsRecordMapper bizPointsRecordMapper;
     private final BizLicenseMapper bizLicenseMapper;
-    private final SysUserMapper sysUserMapper;
 
     private static final DateTimeFormatter ISO_FMT = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     public PageResult<PhotoVO> listMyPhotos(String status, PageQuery query) {
-        Long userId = checkPhotographer();
+        Long userId = StpUtil.getLoginIdAsLong();
         Page<BizPhotoPO> page = new Page<>(query.getPage(), query.getPageSize());
 
         LambdaQueryWrapper<BizPhotoPO> wrapper = new LambdaQueryWrapper<BizPhotoPO>()
@@ -55,7 +54,7 @@ public class BizStudioService {
 
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> createPhoto(StudioPhotoReq req) {
-        Long userId = checkPhotographer();
+        Long userId = StpUtil.getLoginIdAsLong();
 
         BizPhotoPO photo = new BizPhotoPO();
         photo.setUserId(userId);
@@ -82,7 +81,7 @@ public class BizStudioService {
 
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> updatePhoto(Long photoId, StudioPhotoReq req) {
-        Long userId = checkPhotographer();
+        Long userId = StpUtil.getLoginIdAsLong();
 
         BizPhotoPO photo = bizPhotoMapper.selectById(photoId);
         if (photo == null || !photo.getUserId().equals(userId)) {
@@ -117,7 +116,7 @@ public class BizStudioService {
 
     @Transactional(rollbackFor = Exception.class)
     public void deletePhoto(Long photoId) {
-        Long userId = checkPhotographer();
+        Long userId = StpUtil.getLoginIdAsLong();
 
         BizPhotoPO photo = bizPhotoMapper.selectById(photoId);
         if (photo == null || !photo.getUserId().equals(userId)) {
@@ -136,7 +135,7 @@ public class BizStudioService {
     }
 
     public Map<String, Object> getSalesStats() {
-        Long userId = checkPhotographer();
+        Long userId = StpUtil.getLoginIdAsLong();
 
         Long totalPhotos = bizPhotoMapper.selectCount(
                 new LambdaQueryWrapper<BizPhotoPO>().eq(BizPhotoPO::getUserId, userId));
@@ -165,7 +164,7 @@ public class BizStudioService {
     }
 
     public PageResult<Map<String, Object>> listReceivedLicenses(String status, PageQuery query) {
-        Long userId = checkPhotographer();
+        Long userId = StpUtil.getLoginIdAsLong();
 
         List<Long> myPhotoIds = bizPhotoMapper.selectList(
                 new LambdaQueryWrapper<BizPhotoPO>().eq(BizPhotoPO::getUserId, userId)
@@ -203,7 +202,7 @@ public class BizStudioService {
     }
 
     public Map<String, Object> reviewLicense(Long licenseId, StudioLicenseReviewReq req) {
-        Long userId = checkPhotographer();
+        Long userId = StpUtil.getLoginIdAsLong();
 
         BizLicensePO license = bizLicenseMapper.selectById(licenseId);
         if (license == null) {
@@ -238,7 +237,7 @@ public class BizStudioService {
     }
 
     public PageResult<Map<String, Object>> getEarnings(PageQuery query) {
-        Long userId = checkPhotographer();
+        Long userId = StpUtil.getLoginIdAsLong();
         Page<BizPointsRecordPO> page = new Page<>(query.getPage(), query.getPageSize());
 
         bizPointsRecordMapper.selectPage(page,
@@ -263,7 +262,7 @@ public class BizStudioService {
     }
 
     public PhotoVO getMyPhotoDetail(Long photoId) {
-        Long userId = checkPhotographer();
+        Long userId = StpUtil.getLoginIdAsLong();
         BizPhotoPO photo = bizPhotoMapper.selectById(photoId);
         if (photo == null || !photo.getUserId().equals(userId)) {
             throw new BizException(404, "作品不存在");
@@ -273,7 +272,7 @@ public class BizStudioService {
 
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> togglePhotoStatus(Long photoId, StudioPhotoStatusReq req) {
-        Long userId = checkPhotographer();
+        Long userId = StpUtil.getLoginIdAsLong();
         BizPhotoPO photo = bizPhotoMapper.selectById(photoId);
         if (photo == null || !photo.getUserId().equals(userId)) {
             throw new BizException(404, "作品不存在");
@@ -297,15 +296,6 @@ public class BizStudioService {
         result.put("id", String.valueOf(photo.getId()));
         result.put("status", photo.getStatus());
         return result;
-    }
-
-    private Long checkPhotographer() {
-        Long userId = StpUtil.getLoginIdAsLong();
-        SysUserPO user = sysUserMapper.selectById(userId);
-        if (!"photographer".equals(user.getRole()) && !"admin".equals(user.getRole())) {
-            throw new BizException(403, "仅摄影师可访问工作台");
-        }
-        return userId;
     }
 
     private void savePhotoTags(Long photoId, List<Long> tagIds) {

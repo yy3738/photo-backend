@@ -202,7 +202,6 @@ public class BizPhotoService {
 
     public DownloadVO getDownloadUrl(Long photoId) {
         Long userId = StpUtil.getLoginIdAsLong();
-        SysUserPO user = sysUserMapper.selectById(userId);
         BizPhotoPO photo = bizPhotoMapper.selectById(photoId);
 
         if (photo == null) {
@@ -210,7 +209,7 @@ public class BizPhotoService {
         }
 
         boolean isOwner = photo.getUserId().equals(userId);
-        boolean isAdmin = "admin".equals(user.getRole());
+        boolean isAdmin = StpUtil.hasRole("admin");
         boolean hasPurchased = bizOrderMapper.selectCount(
                 new LambdaQueryWrapper<BizOrderPO>()
                         .eq(BizOrderPO::getUserId, userId)

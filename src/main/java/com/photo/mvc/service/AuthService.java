@@ -6,18 +6,25 @@ import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.photo.common.exception.BizException;
+import com.photo.mvc.entity.model.SysRolePO;
 import com.photo.mvc.entity.model.SysUserPO;
+import com.photo.mvc.entity.model.SysUserRolePO;
 import com.photo.mvc.entity.vo.LoginVO;
 import com.photo.mvc.entity.vo.RefreshTokenVO;
+import com.photo.mvc.mapper.SysRoleMapper;
 import com.photo.mvc.mapper.SysUserMapper;
+import com.photo.mvc.mapper.SysUserRoleMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -25,6 +32,8 @@ import java.util.UUID;
 public class AuthService {
 
     private final SysUserMapper sysUserMapper;
+    private final SysRoleMapper sysRoleMapper;
+    private final SysUserRoleMapper sysUserRoleMapper;
 
     @Value("${wx.appid:}")
     private String appid;
@@ -32,6 +41,7 @@ public class AuthService {
     @Value("${wx.secret:}")
     private String secret;
 
+    @Transactional(rollbackFor = Exception.class)
     public LoginVO wxLogin(String code) {
         String openid = getOpenidFromWx(code);
 
@@ -42,10 +52,21 @@ public class AuthService {
             user = new SysUserPO();
             user.setOpenid(openid);
             user.setNickname("用户" + openid.substring(0, 6));
-            user.setRole("buyer");
             user.setPoints(0);
             user.setIsBanned(0);
             sysUserMapper.insert(user);
+
+            // 写入 buyer 角色关联
+            SysRolePO buyerRole = sysRoleMapper.selectOne(
+                    new LambdaQueryWrapper<SysRolePO>()
+                            .eq(SysRolePO::getCode, "buyer")
+                            .eq(SysRolePO::getStatus, 1));
+            if (buyerRole != null) {
+                SysUserRolePO ur = new SysUserRolePO();
+                ur.setUserId(user.getId());
+                ur.setRoleId(buyerRole.getId());
+                sysUserRoleMapper.insert(ur);
+            }
         }
 
         if (user.getIsBanned() == 1) {
@@ -58,6 +79,9 @@ public class AuthService {
         String refreshToken = UUID.randomUUID().toString().replace("-", "");
         StpUtil.getSession().set("refreshToken", refreshToken);
 
+        // 从关系表查角色
+        List<String> roleCodes = getUserRoleCodes(user.getId());
+
         LoginVO resp = new LoginVO();
         resp.setAccessToken(accessToken);
         resp.setRefreshToken(refreshToken);
@@ -66,7 +90,7 @@ public class AuthService {
         userInfo.setId(String.valueOf(user.getId()));
         userInfo.setNickname(user.getNickname());
         userInfo.setAvatar(user.getAvatar());
-        userInfo.setRole(user.getRole());
+        userInfo.setRoles(roleCodes);
         userInfo.setPoints(user.getPoints());
         resp.setUser(userInfo);
 
@@ -91,6 +115,20 @@ public class AuthService {
         resp.setAccessToken(StpUtil.getTokenValue());
         resp.setRefreshToken(newRefreshToken);
         return resp;
+    }
+
+    private List<String> getUserRoleCodes(Long userId) {
+        List<SysUserRolePO> userRoles = sysUserRoleMapper.selectList(
+                new LambdaQueryWrapper<SysUserRolePO>().eq(SysUserRolePO::getUserId, userId));
+        if (userRoles.isEmpty()) {
+            return List.of();
+        }
+        List<Long> roleIds = userRoles.stream().map(SysUserRolePO::getRoleId).collect(Collectors.toList());
+        List<SysRolePO> roles = sysRoleMapper.selectList(
+                new LambdaQueryWrapper<SysRolePO>()
+                        .in(SysRolePO::getId, roleIds)
+                        .eq(SysRolePO::getStatus, 1));
+        return roles.stream().map(SysRolePO::getCode).collect(Collectors.toList());
     }
 
     private String getOpenidFromWx(String code) {

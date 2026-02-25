@@ -1,6 +1,6 @@
 package com.photo.mvc.controller;
 
-import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckRole;
 import com.photo.common.result.PageQuery;
 import com.photo.common.result.PageResult;
 import com.photo.common.result.R;
@@ -26,7 +26,7 @@ public class StudioController {
     private final BizStudioService bizStudioService;
 
     @Operation(summary = "我的作品列表")
-    @SaCheckLogin
+    @SaCheckRole("photographer")
     @GetMapping("/photos")
     public R<PageResult<PhotoVO>> listMyPhotos(
             @RequestParam(required = false) String status,
@@ -35,14 +35,14 @@ public class StudioController {
     }
 
     @Operation(summary = "上传作品")
-    @SaCheckLogin
+    @SaCheckRole("photographer")
     @PostMapping("/photos")
     public R<Map<String, Object>> createPhoto(@Valid @RequestBody StudioPhotoReq req) {
         return R.ok(bizStudioService.createPhoto(req));
     }
 
     @Operation(summary = "编辑作品")
-    @SaCheckLogin
+    @SaCheckRole("photographer")
     @PutMapping("/photos/{id}")
     public R<Map<String, Object>> updatePhoto(
             @PathVariable Long id,
@@ -51,14 +51,14 @@ public class StudioController {
     }
 
     @Operation(summary = "作品详情")
-    @SaCheckLogin
+    @SaCheckRole("photographer")
     @GetMapping("/photos/{id}")
     public R<PhotoVO> getPhotoDetail(@PathVariable Long id) {
         return R.ok(bizStudioService.getMyPhotoDetail(id));
     }
 
     @Operation(summary = "上架/下架作品")
-    @SaCheckLogin
+    @SaCheckRole("photographer")
     @PatchMapping("/photos/{id}/status")
     public R<Map<String, Object>> togglePhotoStatus(
             @PathVariable Long id,
@@ -67,7 +67,7 @@ public class StudioController {
     }
 
     @Operation(summary = "删除作品")
-    @SaCheckLogin
+    @SaCheckRole("photographer")
     @DeleteMapping("/photos/{id}")
     public R<Void> deletePhoto(@PathVariable Long id) {
         bizStudioService.deletePhoto(id);
@@ -75,21 +75,21 @@ public class StudioController {
     }
 
     @Operation(summary = "销售统计")
-    @SaCheckLogin
+    @SaCheckRole("photographer")
     @GetMapping("/stats")
     public R<Map<String, Object>> stats() {
         return R.ok(bizStudioService.getSalesStats());
     }
 
     @Operation(summary = "收入明细")
-    @SaCheckLogin
+    @SaCheckRole("photographer")
     @GetMapping("/earnings")
     public R<PageResult<Map<String, Object>>> earnings(PageQuery query) {
         return R.ok(bizStudioService.getEarnings(query));
     }
 
     @Operation(summary = "收到的授权申请列表")
-    @SaCheckLogin
+    @SaCheckRole("photographer")
     @GetMapping("/licenses")
     public R<PageResult<Map<String, Object>>> licenses(
             @RequestParam(required = false) String status,
@@ -98,7 +98,7 @@ public class StudioController {
     }
 
     @Operation(summary = "审批授权申请")
-    @SaCheckLogin
+    @SaCheckRole("photographer")
     @PostMapping("/licenses/{id}/review")
     public R<Map<String, Object>> reviewLicense(
             @PathVariable Long id,

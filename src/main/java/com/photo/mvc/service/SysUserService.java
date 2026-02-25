@@ -11,6 +11,7 @@ import com.photo.mvc.entity.vo.UserVO;
 import com.photo.mvc.mapper.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -26,6 +27,8 @@ public class SysUserService {
     private final BizOrderMapper bizOrderMapper;
     private final BizPointsRecordMapper bizPointsRecordMapper;
     private final BizLicenseMapper bizLicenseMapper;
+    private final SysRoleMapper sysRoleMapper;
+    private final SysUserRoleMapper sysUserRoleMapper;
 
     private static final DateTimeFormatter ISO_FMT = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
@@ -38,19 +41,36 @@ public class SysUserService {
         return toUserVO(user);
     }
 
-    public Map<String, String> enablePhotographer() {
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> enablePhotographer() {
         Long userId = StpUtil.getLoginIdAsLong();
         SysUserPO user = sysUserMapper.selectById(userId);
 
-        if (!"buyer".equals(user.getRole())) {
-            throw new BizException(400, "仅买家可开启摄影师模式");
+        // 检查用户是否已拥有 photographer 角色
+        SysRolePO photographerRole = sysRoleMapper.selectOne(
+                new LambdaQueryWrapper<SysRolePO>()
+                        .eq(SysRolePO::getCode, "photographer")
+                        .eq(SysRolePO::getStatus, 1));
+        if (photographerRole == null) {
+            throw new BizException(500, "摄影师角色未配置");
         }
 
-        user.setRole("photographer");
-        sysUserMapper.updateById(user);
+        Long exists = sysUserRoleMapper.selectCount(
+                new LambdaQueryWrapper<SysUserRolePO>()
+                        .eq(SysUserRolePO::getUserId, userId)
+                        .eq(SysUserRolePO::getRoleId, photographerRole.getId()));
+        if (exists > 0) {
+            throw new BizException(400, "您已拥有摄影师角色");
+        }
 
-        Map<String, String> result = new HashMap<>();
-        result.put("role", "photographer");
+        // 插入 user_role 关联
+        SysUserRolePO ur = new SysUserRolePO();
+        ur.setUserId(userId);
+        ur.setRoleId(photographerRole.getId());
+        sysUserRoleMapper.insert(ur);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("roles", getUserRoleCodes(userId));
         return result;
     }
 
@@ -140,10 +160,24 @@ public class SysUserService {
         vo.setOpenid(user.getOpenid());
         vo.setNickname(user.getNickname());
         vo.setAvatar(user.getAvatar());
-        vo.setRole(user.getRole());
+        vo.setRoles(getUserRoleCodes(user.getId()));
         vo.setPoints(user.getPoints());
         vo.setIsBanned(user.getIsBanned() == 1);
         vo.setCreatedAt(user.getCreateTime() != null ? user.getCreateTime().format(ISO_FMT) : null);
         return vo;
+    }
+
+    private List<String> getUserRoleCodes(Long userId) {
+        List<SysUserRolePO> userRoles = sysUserRoleMapper.selectList(
+                new LambdaQueryWrapper<SysUserRolePO>().eq(SysUserRolePO::getUserId, userId));
+        if (userRoles.isEmpty()) {
+            return List.of();
+        }
+        List<Long> roleIds = userRoles.stream().map(SysUserRolePO::getRoleId).collect(Collectors.toList());
+        List<SysRolePO> roles = sysRoleMapper.selectList(
+                new LambdaQueryWrapper<SysRolePO>()
+                        .in(SysRolePO::getId, roleIds)
+                        .eq(SysRolePO::getStatus, 1));
+        return roles.stream().map(SysRolePO::getCode).collect(Collectors.toList());
     }
 }

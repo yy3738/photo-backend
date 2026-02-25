@@ -4,11 +4,9 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.photo.common.exception.BizException;
 import com.photo.mvc.entity.model.BizLicensePO;
 import com.photo.mvc.entity.model.BizPhotoPO;
-import com.photo.mvc.entity.model.SysUserPO;
 import com.photo.mvc.entity.req.LicenseCreateReq;
 import com.photo.mvc.mapper.BizLicenseMapper;
 import com.photo.mvc.mapper.BizPhotoMapper;
-import com.photo.mvc.mapper.SysUserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -24,7 +22,6 @@ public class BizLicenseService {
 
     private final BizLicenseMapper bizLicenseMapper;
     private final BizPhotoMapper bizPhotoMapper;
-    private final SysUserMapper sysUserMapper;
 
     @Value("${oss.host:https://oss.example.com}")
     private String ossHost;
@@ -65,7 +62,6 @@ public class BizLicenseService {
 
     public Map<String, Object> getLicenseDetail(Long id) {
         Long userId = StpUtil.getLoginIdAsLong();
-        SysUserPO user = sysUserMapper.selectById(userId);
         BizLicensePO license = bizLicenseMapper.selectById(id);
 
         if (license == null) {
@@ -75,7 +71,7 @@ public class BizLicenseService {
         BizPhotoPO photo = bizPhotoMapper.selectById(license.getPhotoId());
         boolean isApplicant = license.getApplicantId().equals(userId);
         boolean isPhotographer = photo != null && photo.getUserId().equals(userId);
-        boolean isAdmin = "admin".equals(user.getRole());
+        boolean isAdmin = StpUtil.hasRole("admin");
 
         if (!isApplicant && !isPhotographer && !isAdmin) {
             throw new BizException(403, "无权查看该授权申请");

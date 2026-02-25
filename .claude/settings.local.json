@@ -16,7 +16,13 @@
       "Bash(mvn.cmd compile:*)",
       "Bash(E:/company/jsw/photo-backend/mvnw.cmd compile:*)",
       "Bash(JAVA_HOME=\"C:/Users/JSWPC2024101201/.jdks/temurin-17.0.12\" E:/company/jsw/photo-backend/mvnw.cmd compile:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(tail:*)",
+      "Bash(npx:*)",
+      "Bash(mysql:*)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "mysql"
+  ]
 }

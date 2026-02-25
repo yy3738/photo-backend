@@ -32,11 +32,12 @@ public class AdminService {
     private final BizOrderMapper bizOrderMapper;
     private final BizLicenseMapper bizLicenseMapper;
     private final BizPointsRecordMapper bizPointsRecordMapper;
+    private final SysRoleMapper sysRoleMapper;
+    private final SysUserRoleMapper sysUserRoleMapper;
 
     private static final DateTimeFormatter ISO_FMT = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     public Map<String, Object> getDashboard() {
-        checkAdmin();
         Map<String, Object> data = new HashMap<>();
         data.put("totalUsers", sysUserMapper.selectCount(null));
         data.put("totalPhotos", bizPhotoMapper.selectCount(null));
@@ -49,12 +50,26 @@ public class AdminService {
     }
 
     public PageResult<Map<String, Object>> listUsers(String role, PageQuery query) {
-        checkAdmin();
         Page<SysUserPO> page = new Page<>(query.getPage(), query.getPageSize());
 
         LambdaQueryWrapper<SysUserPO> wrapper = new LambdaQueryWrapper<SysUserPO>()
-                .eq(role != null && !role.isEmpty(), SysUserPO::getRole, role)
                 .orderByDesc(SysUserPO::getCreateTime);
+
+        // 按角色筛选：通过关系表查 userIds
+        if (role != null && !role.isEmpty()) {
+            SysRolePO sysRole = sysRoleMapper.selectOne(
+                    new LambdaQueryWrapper<SysRolePO>().eq(SysRolePO::getCode, role));
+            if (sysRole == null) {
+                return PageResult.of(List.of(), 0L, query.getPage(), query.getPageSize());
+            }
+            List<Long> userIds = sysUserRoleMapper.selectList(
+                    new LambdaQueryWrapper<SysUserRolePO>().eq(SysUserRolePO::getRoleId, sysRole.getId())
+            ).stream().map(SysUserRolePO::getUserId).collect(Collectors.toList());
+            if (userIds.isEmpty()) {
+                return PageResult.of(List.of(), 0L, query.getPage(), query.getPageSize());
+            }
+            wrapper.in(SysUserPO::getId, userIds);
+        }
 
         sysUserMapper.selectPage(page, wrapper);
 
@@ -64,7 +79,7 @@ public class AdminService {
             map.put("openid", u.getOpenid());
             map.put("nickname", u.getNickname());
             map.put("avatar", u.getAvatar());
-            map.put("role", u.getRole());
+            map.put("roles", getUserRoleCodes(u.getId()));
             map.put("points", u.getPoints());
             map.put("isBanned", u.getIsBanned() == 1);
             map.put("createdAt", u.getCreateTime() != null ? u.getCreateTime().format(ISO_FMT) : null);
@@ -75,7 +90,6 @@ public class AdminService {
     }
 
     public void banUser(Long userId) {
-        checkAdmin();
         SysUserPO user = sysUserMapper.selectById(userId);
         if (user == null) throw new BizException(404, "用户不存在");
         user.setIsBanned(1);
@@ -83,7 +97,6 @@ public class AdminService {
     }
 
     public void unbanUser(Long userId) {
-        checkAdmin();
         SysUserPO user = sysUserMapper.selectById(userId);
         if (user == null) throw new BizException(404, "用户不存在");
         user.setIsBanned(0);
@@ -92,7 +105,7 @@ public class AdminService {
 
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> rechargePoints(AdminRechargeReq req) {
-        Long adminId = checkAdmin();
+        Long adminId = StpUtil.getLoginIdAsLong();
 
         SysUserPO user = sysUserMapper.selectById(req.getUserId());
         if (user == null) throw new BizException(404, "用户不存在");
@@ -117,7 +130,6 @@ public class AdminService {
     }
 
     public PageResult<Map<String, Object>> listPhotosForReview(String status, PageQuery query) {
-        checkAdmin();
         Page<BizPhotoPO> page = new Page<>(query.getPage(), query.getPageSize());
 
         LambdaQueryWrapper<BizPhotoPO> wrapper = new LambdaQueryWrapper<BizPhotoPO>()
@@ -149,7 +161,7 @@ public class AdminService {
     }
 
     public Map<String, Object> reviewPhoto(Long photoId, AdminPhotoReviewReq req) {
-        Long adminId = checkAdmin();
+        Long adminId = StpUtil.getLoginIdAsLong();
 
         BizPhotoPO photo = bizPhotoMapper.selectById(photoId);
         if (photo == null) throw new BizException(404, "作品不存在");
@@ -176,7 +188,6 @@ public class AdminService {
     }
 
     public PageResult<Map<String, Object>> listLicensesForReview(String status, PageQuery query) {
-        checkAdmin();
         Page<BizLicensePO> page = new Page<>(query.getPage(), query.getPageSize());
 
         LambdaQueryWrapper<BizLicensePO> wrapper = new LambdaQueryWrapper<BizLicensePO>()
@@ -205,7 +216,7 @@ public class AdminService {
     }
 
     public Map<String, Object> reviewLicense(Long licenseId, AdminLicenseReviewReq req) {
-        Long adminId = checkAdmin();
+        Long adminId = StpUtil.getLoginIdAsLong();
 
         BizLicensePO license = bizLicenseMapper.selectById(licenseId);
         if (license == null) throw new BizException(404, "授权申请不存在");
@@ -232,7 +243,7 @@ public class AdminService {
     }
 
     public Map<String, Object> createCategory(AdminCategoryReq req) {
-        Long adminId = checkAdmin();
+        Long adminId = StpUtil.getLoginIdAsLong();
         SysCategoryPO category = new SysCategoryPO();
         category.setName(req.getName());
         category.setSort(req.getSort() != null ? req.getSort() : 0);
@@ -247,7 +258,7 @@ public class AdminService {
     }
 
     public Map<String, Object> updateCategory(Long id, AdminCategoryReq req) {
-        Long adminId = checkAdmin();
+        Long adminId = StpUtil.getLoginIdAsLong();
         SysCategoryPO category = sysCategoryMapper.selectById(id);
         if (category == null) throw new BizException(404, "分类不存在");
 
@@ -263,7 +274,6 @@ public class AdminService {
     }
 
     public void deleteCategory(Long id) {
-        checkAdmin();
         Long count = bizPhotoMapper.selectCount(
                 new LambdaQueryWrapper<BizPhotoPO>().eq(BizPhotoPO::getCategoryId, id));
         if (count > 0) {
@@ -274,7 +284,7 @@ public class AdminService {
     }
 
     public Map<String, Object> createTag(AdminTagReq req) {
-        Long adminId = checkAdmin();
+        Long adminId = StpUtil.getLoginIdAsLong();
         SysTagPO tag = new SysTagPO();
         tag.setName(req.getName());
         tag.setCategoryId(req.getCategoryId());
@@ -290,7 +300,7 @@ public class AdminService {
     }
 
     public Map<String, Object> updateTag(Long id, AdminTagReq req) {
-        Long adminId = checkAdmin();
+        Long adminId = StpUtil.getLoginIdAsLong();
         SysTagPO tag = sysTagMapper.selectById(id);
         if (tag == null) throw new BizException(404, "标签不存在");
 
@@ -307,12 +317,24 @@ public class AdminService {
     }
 
     public void deleteTag(Long id) {
-        checkAdmin();
         sysTagMapper.deleteById(id);
     }
 
+    private List<String> getUserRoleCodes(Long userId) {
+        List<SysUserRolePO> userRoles = sysUserRoleMapper.selectList(
+                new LambdaQueryWrapper<SysUserRolePO>().eq(SysUserRolePO::getUserId, userId));
+        if (userRoles.isEmpty()) {
+            return List.of();
+        }
+        List<Long> roleIds = userRoles.stream().map(SysUserRolePO::getRoleId).collect(Collectors.toList());
+        List<SysRolePO> roles = sysRoleMapper.selectList(
+                new LambdaQueryWrapper<SysRolePO>()
+                        .in(SysRolePO::getId, roleIds)
+                        .eq(SysRolePO::getStatus, 1));
+        return roles.stream().map(SysRolePO::getCode).collect(Collectors.toList());
+    }
+
     public List<CategoryVO> listCategories() {
-        checkAdmin();
         List<SysCategoryPO> categories = sysCategoryMapper.selectList(
                 new LambdaQueryWrapper<SysCategoryPO>().orderByAsc(SysCategoryPO::getSort));
         return categories.stream().map(c -> {
@@ -326,7 +348,6 @@ public class AdminService {
     }
 
     public List<TagVO> listTags(Long categoryId) {
-        checkAdmin();
         LambdaQueryWrapper<SysTagPO> wrapper = new LambdaQueryWrapper<SysTagPO>()
                 .eq(categoryId != null, SysTagPO::getCategoryId, categoryId)
                 .orderByAsc(SysTagPO::getSort);
@@ -341,12 +362,4 @@ public class AdminService {
         }).collect(Collectors.toList());
     }
 
-    private Long checkAdmin() {
-        Long userId = StpUtil.getLoginIdAsLong();
-        SysUserPO user = sysUserMapper.selectById(userId);
-        if (!"admin".equals(user.getRole())) {
-            throw new BizException(403, "仅管理员可访问");
-        }
-        return userId;
-    }
 }

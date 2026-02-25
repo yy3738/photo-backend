@@ -21,8 +21,6 @@ public class SysUserPO {
     private String nickname;
     @Schema(description = "头像URL")
     private String avatar;
-    @Schema(description = "角色：buyer/photographer/admin")
-    private String role;
     @Schema(description = "积分余额")
     private Integer points;
     @Schema(description = "是否封禁：0否 1是")

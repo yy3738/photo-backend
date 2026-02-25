@@ -31,7 +31,7 @@ public class UserController {
     @Operation(summary = "开通摄影师身份")
     @SaCheckLogin
     @PostMapping("/enable-photographer")
-    public R<Map<String, String>> enablePhotographer() {
+    public R<Map<String, Object>> enablePhotographer() {
         return R.ok(sysUserService.enablePhotographer());
     }
 
