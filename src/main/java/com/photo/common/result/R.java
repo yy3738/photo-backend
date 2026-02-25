@@ -1,5 +1,6 @@
 package com.photo.common.result;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -8,10 +9,14 @@ import java.io.Serializable;
  * 统一响应封装
  */
 @Data
+@Schema(description = "统一响应体")
 public class R<T> implements Serializable {
 
+    @Schema(description = "状态码，0表示成功")
     private int code;
+    @Schema(description = "提示信息")
     private String message;
+    @Schema(description = "响应数据")
     private T data;
 
     public static <T> R<T> ok() {

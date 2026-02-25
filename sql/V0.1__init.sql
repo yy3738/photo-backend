@@ -129,7 +129,6 @@ CREATE TABLE t_biz_order (
     version             INT          NOT NULL DEFAULT 1              COMMENT '乐观锁版本号',
     is_deleted          TINYINT(1)   NOT NULL DEFAULT 0              COMMENT '逻辑删除 0-未删除 1-已删除',
     PRIMARY KEY (id),
-    UNIQUE KEY uk_biz_order_user_photo (user_id, photo_id),
     KEY idx_biz_order_photographer_id (photographer_id),
     KEY idx_biz_order_photo_id (photo_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='订单表';

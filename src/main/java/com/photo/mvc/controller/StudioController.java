@@ -7,6 +7,7 @@ import com.photo.common.result.R;
 import com.photo.mvc.entity.vo.PhotoVO;
 import com.photo.mvc.entity.req.StudioLicenseReviewReq;
 import com.photo.mvc.entity.req.StudioPhotoReq;
+import com.photo.mvc.entity.req.StudioPhotoStatusReq;
 import com.photo.mvc.service.BizStudioService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -47,6 +48,22 @@ public class StudioController {
             @PathVariable Long id,
             @Valid @RequestBody StudioPhotoReq req) {
         return R.ok(bizStudioService.updatePhoto(id, req));
+    }
+
+    @Operation(summary = "作品详情")
+    @SaCheckLogin
+    @GetMapping("/photos/{id}")
+    public R<PhotoVO> getPhotoDetail(@PathVariable Long id) {
+        return R.ok(bizStudioService.getMyPhotoDetail(id));
+    }
+
+    @Operation(summary = "上架/下架作品")
+    @SaCheckLogin
+    @PatchMapping("/photos/{id}/status")
+    public R<Map<String, Object>> togglePhotoStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody StudioPhotoStatusReq req) {
+        return R.ok(bizStudioService.togglePhotoStatus(id, req));
     }
 
     @Operation(summary = "删除作品")

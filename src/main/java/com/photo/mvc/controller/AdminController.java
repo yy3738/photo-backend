@@ -5,6 +5,8 @@ import com.photo.common.result.PageQuery;
 import com.photo.common.result.PageResult;
 import com.photo.common.result.R;
 import com.photo.mvc.entity.req.*;
+import com.photo.mvc.entity.vo.CategoryVO;
+import com.photo.mvc.entity.vo.TagVO;
 import com.photo.mvc.service.AdminService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -12,6 +14,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @Tag(name = "管理员", description = "仪表盘/用户管理/作品审核/授权审核/分类标签CRUD/积分充值")
@@ -97,6 +100,13 @@ public class AdminController {
         return R.ok(adminService.reviewLicense(id, req));
     }
 
+    @Operation(summary = "分类列表")
+    @SaCheckLogin
+    @GetMapping("/categories")
+    public R<List<CategoryVO>> listCategories() {
+        return R.ok(adminService.listCategories());
+    }
+
     @Operation(summary = "新建分类")
     @SaCheckLogin
     @PostMapping("/categories")
@@ -119,6 +129,13 @@ public class AdminController {
     public R<Void> deleteCategory(@PathVariable Long id) {
         adminService.deleteCategory(id);
         return R.ok(null);
+    }
+
+    @Operation(summary = "标签列表")
+    @SaCheckLogin
+    @GetMapping("/tags")
+    public R<List<TagVO>> listTags(@RequestParam(required = false) Long categoryId) {
+        return R.ok(adminService.listTags(categoryId));
     }
 
     @Operation(summary = "新建标签")

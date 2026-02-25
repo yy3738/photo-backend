@@ -692,7 +692,7 @@ Authorization: Bearer {accessToken}
 
 ---
 
-#### GET /studio/earnings/overview
+#### GET /studio/stats
 
 获取积分收益概览（需登录，摄影师/管理员）。
 
@@ -708,7 +708,7 @@ Authorization: Bearer {accessToken}
 
 ---
 
-#### GET /studio/earnings/history
+#### GET /studio/earnings
 
 获取积分收益明细（需登录，摄影师/管理员）。
 
@@ -734,7 +734,7 @@ Authorization: Bearer {accessToken}
 
 ---
 
-#### PATCH /studio/licenses/:id/review
+#### POST /studio/licenses/:id/review
 
 摄影师确认授权申请（需登录，仅作品摄影师本人/管理员）。
 
@@ -810,7 +810,7 @@ Authorization: Bearer {accessToken}
 
 ---
 
-#### PATCH /admin/photos/:id/review
+#### POST /admin/photos/:id/review
 
 审核作品（管理员）。
 
@@ -853,7 +853,7 @@ Authorization: Bearer {accessToken}
 
 ---
 
-#### PATCH /admin/licenses/:id/review
+#### POST /admin/licenses/:id/review
 
 管理员审核授权申请。
 
@@ -896,7 +896,7 @@ Authorization: Bearer {accessToken}
 
 ---
 
-#### PATCH /admin/users/:id/ban
+#### POST /admin/users/:id/ban
 
 封禁用户（管理员）。
 
@@ -906,7 +906,7 @@ Authorization: Bearer {accessToken}
 
 ---
 
-#### PATCH /admin/users/:id/unban
+#### POST /admin/users/:id/unban
 
 解封用户（管理员）。
 
@@ -1344,18 +1344,18 @@ Authorization: Bearer {accessToken}
 | 工作台 | PUT | /studio/photos/:id | 摄影师(本人) |
 | 工作台 | PATCH | /studio/photos/:id/status | 摄影师(本人) |
 | 工作台 | DELETE | /studio/photos/:id | 摄影师(本人) |
-| 工作台 | GET | /studio/earnings/overview | 摄影师 |
-| 工作台 | GET | /studio/earnings/history | 摄影师 |
+| 工作台 | GET | /studio/stats | 摄影师 |
+| 工作台 | GET | /studio/earnings | 摄影师 |
 | 工作台 | GET | /studio/licenses | 摄影师 |
-| 工作台 | PATCH | /studio/licenses/:id/review | 摄影师(本人) |
+| 工作台 | POST | /studio/licenses/:id/review | 摄影师(本人) |
 | 管理员 | GET | /admin/dashboard | admin |
 | 管理员 | GET | /admin/photos | admin |
-| 管理员 | PATCH | /admin/photos/:id/review | admin |
+| 管理员 | POST | /admin/photos/:id/review | admin |
 | 管理员 | GET | /admin/licenses | admin |
-| 管理员 | PATCH | /admin/licenses/:id/review | admin |
+| 管理员 | POST | /admin/licenses/:id/review | admin |
 | 管理员 | GET | /admin/users | admin |
-| 管理员 | PATCH | /admin/users/:id/ban | admin |
-| 管理员 | PATCH | /admin/users/:id/unban | admin |
+| 管理员 | POST | /admin/users/:id/ban | admin |
+| 管理员 | POST | /admin/users/:id/unban | admin |
 | 管理员 | GET | /admin/categories | admin |
 | 管理员 | POST | /admin/categories | admin |
 | 管理员 | PUT | /admin/categories/:id | admin |

@@ -8,6 +8,8 @@ import com.photo.common.result.PageQuery;
 import com.photo.common.result.PageResult;
 import com.photo.mvc.entity.model.*;
 import com.photo.mvc.entity.req.*;
+import com.photo.mvc.entity.vo.CategoryVO;
+import com.photo.mvc.entity.vo.TagVO;
 import com.photo.mvc.mapper.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -307,6 +309,36 @@ public class AdminService {
     public void deleteTag(Long id) {
         checkAdmin();
         sysTagMapper.deleteById(id);
+    }
+
+    public List<CategoryVO> listCategories() {
+        checkAdmin();
+        List<SysCategoryPO> categories = sysCategoryMapper.selectList(
+                new LambdaQueryWrapper<SysCategoryPO>().orderByAsc(SysCategoryPO::getSort));
+        return categories.stream().map(c -> {
+            CategoryVO vo = new CategoryVO();
+            vo.setId(String.valueOf(c.getId()));
+            vo.setName(c.getName());
+            vo.setSort(c.getSort());
+            vo.setPhotoCount(c.getPhotoCount() != null ? c.getPhotoCount().longValue() : 0L);
+            return vo;
+        }).collect(Collectors.toList());
+    }
+
+    public List<TagVO> listTags(Long categoryId) {
+        checkAdmin();
+        LambdaQueryWrapper<SysTagPO> wrapper = new LambdaQueryWrapper<SysTagPO>()
+                .eq(categoryId != null, SysTagPO::getCategoryId, categoryId)
+                .orderByAsc(SysTagPO::getSort);
+        List<SysTagPO> tags = sysTagMapper.selectList(wrapper);
+        return tags.stream().map(t -> {
+            TagVO vo = new TagVO();
+            vo.setId(String.valueOf(t.getId()));
+            vo.setName(t.getName());
+            vo.setCategoryId(String.valueOf(t.getCategoryId()));
+            vo.setSort(t.getSort());
+            return vo;
+        }).collect(Collectors.toList());
     }
 
     private Long checkAdmin() {

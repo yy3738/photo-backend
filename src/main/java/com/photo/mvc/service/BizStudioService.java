@@ -9,6 +9,7 @@ import com.photo.common.result.PageResult;
 import com.photo.mvc.entity.model.*;
 import com.photo.mvc.entity.req.StudioLicenseReviewReq;
 import com.photo.mvc.entity.req.StudioPhotoReq;
+import com.photo.mvc.entity.req.StudioPhotoStatusReq;
 import com.photo.mvc.entity.vo.PhotoVO;
 import com.photo.mvc.mapper.*;
 import lombok.RequiredArgsConstructor;
@@ -259,6 +260,43 @@ public class BizStudioService {
         }).collect(Collectors.toList());
 
         return PageResult.of(list, page.getTotal(), query.getPage(), query.getPageSize());
+    }
+
+    public PhotoVO getMyPhotoDetail(Long photoId) {
+        Long userId = checkPhotographer();
+        BizPhotoPO photo = bizPhotoMapper.selectById(photoId);
+        if (photo == null || !photo.getUserId().equals(userId)) {
+            throw new BizException(404, "作品不存在");
+        }
+        return toPhotoVO(photo);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> togglePhotoStatus(Long photoId, StudioPhotoStatusReq req) {
+        Long userId = checkPhotographer();
+        BizPhotoPO photo = bizPhotoMapper.selectById(photoId);
+        if (photo == null || !photo.getUserId().equals(userId)) {
+            throw new BizException(404, "作品不存在");
+        }
+
+        String current = photo.getStatus();
+        String target = req.getStatus();
+
+        if ("approved".equals(current) && "offline".equals(target)) {
+            photo.setStatus("offline");
+        } else if ("offline".equals(current) && "approved".equals(target)) {
+            photo.setStatus("approved");
+        } else {
+            throw new BizException(400, "当前状态不允许此操作");
+        }
+
+        photo.setUpdateBy(userId);
+        bizPhotoMapper.updateById(photo);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("id", String.valueOf(photo.getId()));
+        result.put("status", photo.getStatus());
+        return result;
     }
 
     private Long checkPhotographer() {
