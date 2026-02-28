@@ -115,7 +115,7 @@ public class SysUserService {
             map.put("id", String.valueOf(o.getId()));
             map.put("photoId", String.valueOf(o.getPhotoId()));
             map.put("photoTitle", o.getPhotoTitle());
-            map.put("photoPreviewUrl", buildPreviewUrl(o.getPhotoPreviewKey()));
+            map.put("photoPreviewUrl", buildUrl(o.getPhotoPreviewKey()));
             map.put("price", o.getPrice());
             map.put("createdAt", o.getCreateTime() != null ? o.getCreateTime().format(ISO_FMT) : null);
             return map;
@@ -140,7 +140,7 @@ public class SysUserService {
             map.put("id", String.valueOf(l.getId()));
             map.put("photoId", String.valueOf(l.getPhotoId()));
             map.put("photoTitle", l.getPhotoTitle());
-            map.put("photoPreviewUrl", buildPreviewUrl(l.getPhotoPreviewKey()));
+            map.put("photoPreviewUrl", buildUrl(l.getPhotoPreviewKey()));
             map.put("purpose", l.getPurpose());
             map.put("scene", l.getScene());
             map.put("duration", l.getDuration());
@@ -183,13 +183,13 @@ public class SysUserService {
         return roles.stream().map(SysRolePO::getCode).collect(Collectors.toList());
     }
 
-    private String buildPreviewUrl(String previewKey) {
-        if (previewKey == null || previewKey.isEmpty()) {
+    private String buildUrl(String key) {
+        if (key == null || key.isEmpty()) {
             return null;
         }
-        if (previewKey.startsWith("http://") || previewKey.startsWith("https://")) {
-            return previewKey;
+        if (key.startsWith("http://") || key.startsWith("https://")) {
+            return key;
         }
-        return minioTemplate.getPresignedDownloadUrl(previewKey, 60);
+        return minioTemplate.getPresignedDownloadUrl(key, 60);
     }
 }

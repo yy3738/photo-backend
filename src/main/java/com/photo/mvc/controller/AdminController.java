@@ -80,6 +80,13 @@ public class AdminController {
         return R.ok(adminService.listPhotosForReview(status, query));
     }
 
+    @Operation(summary = "作品详情")
+    @SaCheckRole("admin")
+    @GetMapping("/photos/{id}")
+    public R<PhotoVO> detail(@PathVariable Long id) {
+        return R.ok(adminService.getPhotoDetail(id));
+    }
+
     @Operation(summary = "审核作品")
     @SaCheckRole("admin")
     @PostMapping("/photos/{id}/review")

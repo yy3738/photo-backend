@@ -10,6 +10,7 @@ import com.photo.common.result.PageResult;
 import com.photo.mvc.entity.model.*;
 import com.photo.mvc.entity.req.*;
 import com.photo.mvc.entity.vo.CategoryVO;
+import com.photo.mvc.entity.vo.PhotoVO;
 import com.photo.mvc.entity.vo.TagVO;
 import com.photo.mvc.mapper.*;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ public class AdminService {
 
     private final SysUserMapper sysUserMapper;
     private final BizPhotoMapper bizPhotoMapper;
+    private final BizPhotoTagMapper bizPhotoTagMapper;
     private final SysCategoryMapper sysCategoryMapper;
     private final SysTagMapper sysTagMapper;
     private final BizOrderMapper bizOrderMapper;
@@ -154,12 +156,79 @@ public class AdminService {
 
             SysUserPO photographer = sysUserMapper.selectById(p.getUserId());
             if (photographer != null) {
-                map.put("photographerNickname", photographer.getNickname());
+                map.put("photographer", photographer.getNickname());
             }
             return map;
         }).collect(Collectors.toList());
 
         return PageResult.of(list, page.getTotal(), query.getPage(), query.getPageSize());
+    }
+
+    public PhotoVO getPhotoDetail(Long id) {
+        BizPhotoPO photo = bizPhotoMapper.selectById(id);
+        if (photo == null) {
+            throw new BizException(404, "作品不存在");
+        }
+
+        PhotoVO vo = toPhotoVO(photo);
+
+        if (StpUtil.isLogin()) {
+            Long userId = StpUtil.getLoginIdAsLong();
+            Long orderCount = bizOrderMapper.selectCount(
+                    new LambdaQueryWrapper<BizOrderPO>()
+                            .eq(BizOrderPO::getUserId, userId)
+                            .eq(BizOrderPO::getPhotoId, id));
+            vo.setIsPurchased(orderCount > 0);
+        } else {
+            vo.setIsPurchased(false);
+        }
+
+        return vo;
+    }
+
+    private PhotoVO toPhotoVO(BizPhotoPO photo) {
+        PhotoVO vo = new PhotoVO();
+        vo.setId(String.valueOf(photo.getId()));
+        vo.setTitle(photo.getTitle());
+        vo.setDescription(photo.getDescription());
+        vo.setPreviewUrl(buildPreviewUrl(photo.getPreviewKey()));
+        vo.setCategoryId(String.valueOf(photo.getCategoryId()));
+        vo.setPrice(photo.getPrice());
+        vo.setAllowLicense(photo.getAllowLicense() == 1);
+        vo.setStatus(photo.getStatus());
+        vo.setRejectReason(photo.getRejectReason());
+        vo.setPurchaseCount(photo.getPurchaseCount());
+        vo.setCreatedAt(photo.getCreateTime() != null ? photo.getCreateTime().format(ISO_FMT) : null);
+        vo.setUpdatedAt(photo.getUpdateTime() != null ? photo.getUpdateTime().format(ISO_FMT) : null);
+
+        SysCategoryPO category = sysCategoryMapper.selectById(photo.getCategoryId());
+        if (category != null) {
+            vo.setCategoryName(category.getName());
+        }
+
+        List<BizPhotoTagPO> photoTags = bizPhotoTagMapper.selectList(
+                new LambdaQueryWrapper<BizPhotoTagPO>().eq(BizPhotoTagPO::getPhotoId, photo.getId()));
+        List<PhotoVO.TagItem> tagItems = photoTags.stream().map(pt -> {
+            SysTagPO tag = sysTagMapper.selectById(pt.getTagId());
+            PhotoVO.TagItem item = new PhotoVO.TagItem();
+            if (tag != null) {
+                item.setId(String.valueOf(tag.getId()));
+                item.setName(tag.getName());
+            }
+            return item;
+        }).collect(Collectors.toList());
+        vo.setTags(tagItems);
+
+        SysUserPO photographer = sysUserMapper.selectById(photo.getUserId());
+        if (photographer != null) {
+            PhotoVO.PhotographerInfo info = new PhotoVO.PhotographerInfo();
+            info.setId(String.valueOf(photographer.getId()));
+            info.setNickname(photographer.getNickname());
+            info.setAvatar(photographer.getAvatar());
+            vo.setPhotographer(info);
+        }
+
+        return vo;
     }
 
     public Map<String, Object> reviewPhoto(Long photoId, AdminPhotoReviewReq req) {

@@ -160,7 +160,10 @@ public class BizPhotoService {
         order.setPhotoId(photoId);
         order.setPhotoTitle(photo.getTitle());
         order.setPhotoPreviewKey(photo.getPreviewKey());
+        order.setPhotographerId(photo.getUserId());
         order.setPrice(price);
+        order.setPlatformFee(price - photographerEarn);
+        order.setPhotographerEarned(photographerEarn);
         order.setCreateBy(userId);
         order.setUpdateBy(userId);
         bizOrderMapper.insert(order);

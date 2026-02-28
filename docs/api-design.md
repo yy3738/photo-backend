@@ -1218,7 +1218,7 @@ Authorization: Bearer {accessToken}
 
 > 所有 `/admin/menus` 接口需验证管理员权限。
 
-#### GET /admin/menus/tree
+#### GET /admin/menus
 
 获取菜单树（管理员）。
 
