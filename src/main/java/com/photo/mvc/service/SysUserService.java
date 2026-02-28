@@ -3,6 +3,7 @@ package com.photo.mvc.service;
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.photo.common.config.MinioTemplate;
 import com.photo.common.exception.BizException;
 import com.photo.common.result.PageQuery;
 import com.photo.common.result.PageResult;
@@ -29,6 +30,7 @@ public class SysUserService {
     private final BizLicenseMapper bizLicenseMapper;
     private final SysRoleMapper sysRoleMapper;
     private final SysUserRoleMapper sysUserRoleMapper;
+    private final MinioTemplate minioTemplate;
 
     private static final DateTimeFormatter ISO_FMT = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
@@ -113,7 +115,7 @@ public class SysUserService {
             map.put("id", String.valueOf(o.getId()));
             map.put("photoId", String.valueOf(o.getPhotoId()));
             map.put("photoTitle", o.getPhotoTitle());
-            map.put("photoPreviewUrl", o.getPhotoPreviewUrl());
+            map.put("photoPreviewUrl", buildPreviewUrl(o.getPhotoPreviewKey()));
             map.put("price", o.getPrice());
             map.put("createdAt", o.getCreateTime() != null ? o.getCreateTime().format(ISO_FMT) : null);
             return map;
@@ -138,7 +140,7 @@ public class SysUserService {
             map.put("id", String.valueOf(l.getId()));
             map.put("photoId", String.valueOf(l.getPhotoId()));
             map.put("photoTitle", l.getPhotoTitle());
-            map.put("photoPreviewUrl", l.getPhotoPreviewUrl());
+            map.put("photoPreviewUrl", buildPreviewUrl(l.getPhotoPreviewKey()));
             map.put("purpose", l.getPurpose());
             map.put("scene", l.getScene());
             map.put("duration", l.getDuration());
@@ -179,5 +181,15 @@ public class SysUserService {
                         .in(SysRolePO::getId, roleIds)
                         .eq(SysRolePO::getStatus, 1));
         return roles.stream().map(SysRolePO::getCode).collect(Collectors.toList());
+    }
+
+    private String buildPreviewUrl(String previewKey) {
+        if (previewKey == null || previewKey.isEmpty()) {
+            return null;
+        }
+        if (previewKey.startsWith("http://") || previewKey.startsWith("https://")) {
+            return previewKey;
+        }
+        return minioTemplate.getPresignedDownloadUrl(previewKey, 60);
     }
 }

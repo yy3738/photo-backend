@@ -3,6 +3,8 @@ package com.photo.mvc.service;
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.photo.common.config.MinIOConfig;
+import com.photo.common.config.MinioTemplate;
 import com.photo.common.exception.BizException;
 import com.photo.common.result.PageQuery;
 import com.photo.common.result.PageResult;
@@ -33,9 +35,8 @@ public class BizPhotoService {
     private final BizOrderMapper bizOrderMapper;
     private final BizPointsRecordMapper bizPointsRecordMapper;
     private final SysUserMapper sysUserMapper;
-
-    @Value("${oss.host:https://oss.example.com}")
-    private String ossHost;
+    private final MinIOConfig minIOConfig;
+    private final MinioTemplate minioTemplate;
 
     private static final DateTimeFormatter ISO_FMT = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
@@ -158,7 +159,7 @@ public class BizPhotoService {
         order.setUserId(userId);
         order.setPhotoId(photoId);
         order.setPhotoTitle(photo.getTitle());
-        order.setPhotoPreviewUrl(photo.getPreviewUrl());
+        order.setPhotoPreviewKey(photo.getPreviewKey());
         order.setPrice(price);
         order.setCreateBy(userId);
         order.setUpdateBy(userId);
@@ -220,7 +221,8 @@ public class BizPhotoService {
         }
 
         LocalDateTime expireAt = LocalDateTime.now().plusMinutes(5);
-        String url = ossHost + "/" + photo.getOriginalKey() + "?expire=" + expireAt.format(ISO_FMT);
+        // 使用MinIO预签名下载URL
+        String url = minioTemplate.getPresignedDownloadUrl(photo.getOriginalKey(), 5);
 
         DownloadVO resp = new DownloadVO();
         resp.setUrl(url);
@@ -233,7 +235,7 @@ public class BizPhotoService {
         vo.setId(String.valueOf(photo.getId()));
         vo.setTitle(photo.getTitle());
         vo.setDescription(photo.getDescription());
-        vo.setPreviewUrl(photo.getPreviewUrl());
+        vo.setPreviewUrl(buildPreviewUrl(photo.getPreviewKey()));
         vo.setCategoryId(String.valueOf(photo.getCategoryId()));
         vo.setPrice(photo.getPrice());
         vo.setAllowLicense(photo.getAllowLicense() == 1);
@@ -271,5 +273,24 @@ public class BizPhotoService {
         }
 
         return vo;
+    }
+
+    /**
+     * 构建预览图访问URL
+     * 支持两种存储格式：
+     * 1. 完整的URL（包含http或https，直接返回）
+     * 2. MinIO key（如 photos/2026/02/xxx.jpg），使用getPublicUrl生成完整URL
+     *
+     * 注意：需要确保MinIO的photo bucket配置了匿名读取策略，允许公开访问预览图
+     * 如未配置，可通过Nginx代理静态资源，或在MinIO控制台设置bucket策略
+     */
+    private String buildPreviewUrl(String previewKey) {
+        if (previewKey == null || previewKey.isEmpty()) {
+            return null;
+        }
+        if (previewKey.startsWith("http://") || previewKey.startsWith("https://")) {
+            return previewKey;
+        }
+        return minioTemplate.getPresignedDownloadUrl(previewKey, 60);
     }
 }

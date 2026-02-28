@@ -3,6 +3,7 @@ package com.photo.mvc.service;
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.photo.common.config.MinioTemplate;
 import com.photo.common.exception.BizException;
 import com.photo.common.result.PageQuery;
 import com.photo.common.result.PageResult;
@@ -34,6 +35,7 @@ public class AdminService {
     private final BizPointsRecordMapper bizPointsRecordMapper;
     private final SysRoleMapper sysRoleMapper;
     private final SysUserRoleMapper sysUserRoleMapper;
+    private final MinioTemplate minioTemplate;
 
     private static final DateTimeFormatter ISO_FMT = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
@@ -142,7 +144,7 @@ public class AdminService {
             Map<String, Object> map = new HashMap<>();
             map.put("id", String.valueOf(p.getId()));
             map.put("title", p.getTitle());
-            map.put("previewUrl", p.getPreviewUrl());
+            map.put("previewUrl", buildPreviewUrl(p.getPreviewKey()));
             map.put("categoryId", String.valueOf(p.getCategoryId()));
             map.put("userId", String.valueOf(p.getUserId()));
             map.put("price", p.getPrice());
@@ -360,6 +362,16 @@ public class AdminService {
             vo.setSort(t.getSort());
             return vo;
         }).collect(Collectors.toList());
+    }
+
+    private String buildPreviewUrl(String previewKey) {
+        if (previewKey == null || previewKey.isEmpty()) {
+            return null;
+        }
+        if (previewKey.startsWith("http://") || previewKey.startsWith("https://")) {
+            return previewKey;
+        }
+        return minioTemplate.getPresignedDownloadUrl(previewKey, 60);
     }
 
 }

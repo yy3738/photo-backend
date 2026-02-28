@@ -1,6 +1,7 @@
 package com.photo.mvc.service;
 
 import cn.dev33.satoken.stp.StpUtil;
+import com.photo.common.config.MinioTemplate;
 import com.photo.common.exception.BizException;
 import com.photo.mvc.entity.model.BizLicensePO;
 import com.photo.mvc.entity.model.BizPhotoPO;
@@ -22,6 +23,7 @@ public class BizLicenseService {
 
     private final BizLicenseMapper bizLicenseMapper;
     private final BizPhotoMapper bizPhotoMapper;
+    private final MinioTemplate minioTemplate;
 
     @Value("${oss.host:https://oss.example.com}")
     private String ossHost;
@@ -43,7 +45,7 @@ public class BizLicenseService {
         BizLicensePO license = new BizLicensePO();
         license.setPhotoId(req.getPhotoId());
         license.setPhotoTitle(photo.getTitle());
-        license.setPhotoPreviewUrl(photo.getPreviewUrl());
+        license.setPhotoPreviewKey(photo.getPreviewKey());
         license.setApplicantId(userId);
         license.setPurpose(req.getPurpose());
         license.setScene(req.getScene());
@@ -114,7 +116,7 @@ public class BizLicenseService {
         map.put("id", String.valueOf(l.getId()));
         map.put("photoId", String.valueOf(l.getPhotoId()));
         map.put("photoTitle", l.getPhotoTitle());
-        map.put("photoPreviewUrl", l.getPhotoPreviewUrl());
+        map.put("photoPreviewUrl", buildPreviewUrl(l.getPhotoPreviewKey()));
         map.put("applicantId", String.valueOf(l.getApplicantId()));
         map.put("purpose", l.getPurpose());
         map.put("scene", l.getScene());
@@ -126,5 +128,15 @@ public class BizLicenseService {
         map.put("createdAt", l.getCreateTime() != null ? l.getCreateTime().format(ISO_FMT) : null);
         map.put("updatedAt", l.getUpdateTime() != null ? l.getUpdateTime().format(ISO_FMT) : null);
         return map;
+    }
+
+    private String buildPreviewUrl(String previewKey) {
+        if (previewKey == null || previewKey.isEmpty()) {
+            return null;
+        }
+        if (previewKey.startsWith("http://") || previewKey.startsWith("https://")) {
+            return previewKey;
+        }
+        return minioTemplate.getPresignedDownloadUrl(previewKey,60);
     }
 }

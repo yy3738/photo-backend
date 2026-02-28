@@ -23,8 +23,8 @@ public class BizOrderPO {
     private Long photographerId;
     @Schema(description = "作品标题")
     private String photoTitle;
-    @Schema(description = "作品预览图URL")
-    private String photoPreviewUrl;
+    @Schema(description = "作品预览图OSS Key")
+    private String photoPreviewKey;
     @Schema(description = "成交价格（积分）")
     private Integer price;
     @Schema(description = "平台手续费（积分）")

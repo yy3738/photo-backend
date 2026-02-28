@@ -49,7 +49,7 @@ INSERT INTO t_sys_tag (id, name, category_id, sort) VALUES
 -- -----------------------------------------------------------
 -- 9. 作品（10 张，覆盖各状态）
 -- -----------------------------------------------------------
-INSERT INTO t_biz_photo (id, title, description, preview_url, original_key, category_id, category_name, user_id, price, allow_license, status, reject_reason, purchase_count) VALUES
+INSERT INTO t_biz_photo (id, title, description, preview_key, original_key, category_id, category_name, user_id, price, allow_license, status, reject_reason, purchase_count) VALUES
 -- 张伟的风光作品
 (8001, '金色日出',       '清晨五点攀登黄山拍摄的日出全景',                'https://oss.example.com/preview/8001.jpg', 'original/8001.jpg', 6001, '风光', 10002, 200,  1, 'approved', NULL, 3),
 (8002, '星河璀璨',       '西藏阿里暗夜保护区银河拱桥',                    'https://oss.example.com/preview/8002.jpg', 'original/8002.jpg', 6001, '风光', 10002, 500,  1, 'approved', NULL, 1),
@@ -87,7 +87,7 @@ INSERT INTO t_biz_photo_tag (id, photo_id, tag_id) VALUES
 -- 11. 订单（8 笔，覆盖不同买家购买不同摄影师作品）
 -- 积分规则：平台抽佣 10%，摄影师得 90%
 -- -----------------------------------------------------------
-INSERT INTO t_biz_order (id, user_id, photo_id, photographer_id, photo_title, photo_preview_url, price, platform_fee, photographer_earned) VALUES
+INSERT INTO t_biz_order (id, user_id, photo_id, photographer_id, photo_title, photo_preview_key, price, platform_fee, photographer_earned) VALUES
 -- 小陈买了 3 张
 (11001, 10005, 8001, 10002, '金色日出',   'https://oss.example.com/preview/8001.jpg', 200, 20,  180),
 (11002, 10005, 8005, 10003, '古镇写真',   'https://oss.example.com/preview/8005.jpg', 350, 35,  315),
@@ -107,7 +107,7 @@ INSERT INTO t_biz_order (id, user_id, photo_id, photographer_id, photo_title, ph
 -- -----------------------------------------------------------
 -- 12. 授权申请（覆盖四种状态）
 -- -----------------------------------------------------------
-INSERT INTO t_biz_license (id, photo_id, photo_title, photo_preview_url, applicant_id, photographer_id, purpose, scene, duration, contact, status, reject_reason, certificate_url) VALUES
+INSERT INTO t_biz_license (id, photo_id, photo_title, photo_preview_key, applicant_id, photographer_id, purpose, scene, duration, contact, status, reject_reason, certificate_url) VALUES
 -- 已授权：小陈申请金色日出商业授权
 (12001, 8001, '金色日出', 'https://oss.example.com/preview/8001.jpg', 10005, 10002,
  'commercial', '用于旅游宣传海报设计', '2025年全年', '13800001111',

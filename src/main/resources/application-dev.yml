@@ -8,6 +8,13 @@ spring:
     username: root
     password: 123456
 
+# MinIO 对象存储
+minio:
+  endpoint: http://localhost:9000
+  access-key: minioadmin
+  secret-key: minio123456
+  bucket: photo
+
 logging:
   level:
     com.photo: debug

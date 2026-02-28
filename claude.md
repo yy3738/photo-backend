@@ -10,6 +10,7 @@
 - MyBatis-Plus 3.5.9（ORM + 分页 + 自动填充，需 mybatis-plus-jsqlparser 扩展）
 - Sa-Token 1.39.0（认证鉴权，@SaCheckLogin 注解）
 - MySQL 8.0
+- MinIO 8.6.0（对象存储）
 - Maven 构建
 - Logback 日志（dev: DEBUG + SQL，prod: WARN + 文件滚动）
 
@@ -26,7 +27,7 @@
 ```
 src/main/java/com/photo/
 ├── common/                  # 通用模块
-│   ├── config/              # MybatisPlusConfig、SaTokenConfig、CorsConfig
+│   ├── config/              # MybatisPlusConfig、SaTokenConfig、CorsConfig、MinIOConfig、MinioTemplate
 │   ├── enums/               # UserRole、PhotoStatus、LicenseStatus、PointsType、MenuType、LicensePurpose
 │   ├── result/              # R<T>、PageQuery、PageResult
 │   └── exception/           # BizException、GlobalExceptionHandler
@@ -74,10 +75,10 @@ src/main/java/com/photo/
 | t_sys_menu | 系统 | 菜单表（dir/menu/button 三级） |
 | t_sys_user_role | 系统 | 用户-角色关联表 |
 | t_sys_role_menu | 系统 | 角色-菜单关联表 |
-| t_biz_photo | 业务 | 作品表 |
+| t_biz_photo | 业务 | 作品表（preview_key 存 MinIO Key，返回前端时转 URL） |
 | t_biz_photo_tag | 业务 | 作品-标签关联表 |
-| t_biz_order | 业务 | 订单表 |
-| t_biz_license | 业务 | 授权申请表 |
+| t_biz_order | 业务 | 订单表（photo_preview_key 快照存 MinIO Key） |
+| t_biz_license | 业务 | 授权申请表（photo_preview_key 冗余存 MinIO Key） |
 | t_biz_points_record | 业务 | 积分流水表 |
 
 ## API 接口模块
@@ -87,7 +88,7 @@ src/main/java/com/photo/
 | 认证 | /auth | 微信登录 |
 | 分类标签 | /categories | 公开分类与标签查询 |
 | 作品 | /photos | 公开作品列表/详情/搜索/购买/下载 |
-| 上传 | /upload | OSS 直传签名 |
+| 上传 | /upload | MinIO 直传签名 |
 | 用户中心 | /user | 个人信息/积分明细/订单/授权记录 |
 | 授权申请 | /licenses | 提交/查看/下载证书 |
 | 摄影师工作台 | /studio | 作品CRUD/销售统计/收入明细/授权审批 |
@@ -98,7 +99,7 @@ src/main/java/com/photo/
 - 积分：1元 = 10积分，平台抽佣 10%，摄影师实得 90%
 - 作品定价：10 ~ 9999 积分，可改价仅影响后续购买
 - Token：Sa-Token 管理会话，timeout 7200s
-- 图片：预览图公开访问，原图私有桶签名 URL 5 分钟有效
+- 图片：预览图和原图在数据库中均存储 MinIO Key（如 `photos/2026/02/uuid_preview.jpg`），返回前端时通过 `MinioTemplate.getPublicUrl()` 转为完整 URL；原图私有桶签名 URL 5 分钟有效
 - 授权流程：买家申请 → 管理员初审 → 摄影师确认 → 生成证书
 
 ## 配置说明
@@ -106,8 +107,48 @@ src/main/java/com/photo/
 application.yml 中需配置：
 - 数据库连接（spring.datasource）
 - 微信小程序 appId / secret（wx.miniapp）
-- OSS 地址（oss.host）
+- MinIO 配置（minio.endpoint、minio.access-key、minio.secret-key、minio.bucket）
 - Sa-Token 超时时间（sa-token.timeout）
+
+### MinIO 对象存储
+
+项目使用 MinIO 作为对象存储服务，主要用于存储摄影作品图片。
+
+#### 文件存储结构
+
+```
+Bucket: photo
+├── photos/                    # 作品图片目录
+│   └── YYYY/MM/             # 按年月组织
+│       └── {uuid}_{type}.{ext}  # 文件名
+│           ├── {uuid}_preview.{ext}  # 预览图（公开访问）
+│           └── {uuid}_original.{ext} # 原图（私有，需签名URL）
+└── certificates/             # 授权证书目录（待实现）
+```
+
+#### 核心类
+
+| 类 | 说明 |
+|------|------|
+| MinIOConfig | MinIO 配置属性类 |
+| MinioTemplate | MinIO 操作模板类，提供文件上传/下载/删除等操作 |
+| BizUploadService | 上传签名服务，提供预签名上传URL |
+
+#### MinioTemplate 核心方法
+
+| 方法 | 说明 |
+|------|------|
+| getPresignedUploadUrl(key) | 获取预签名上传URL，有效期7天 |
+| getPresignedDownloadUrl(key, minutes) | 获取预签名下载URL |
+| getPublicUrl(key) | 获取公开访问URL（预览图） |
+| getObject(key) | 获取文件输入流 |
+| getObject(key, versionId) | 获取指定版本的文件输入流 |
+| delete(key) | 删除文件 |
+| delete(key, versionId) | 删除指定版本的文件 |
+| exists(key) | 验证文件是否存在 |
+| getObjectStat(key) | 获取文件信息 |
+| getObjectStat(key, versionId) | 获取指定版本的文件信息 |
+| generateKey(type, ext) | 生成存储Key |
 
 ## 日志配置
 
@@ -124,5 +165,8 @@ docs/
 ├── sql.md         # 数据库设计文档
 └── api-design.md  # 后端接口设计文档
 sql/
-└── V0.1__init.sql # 数据库初始化脚本
+├── V0.1__init.sql # 数据库初始化脚本
+├── V0.2__rbac_seed_data.sql # RBAC 种子数据
+├── V0.3__drop_user_role_column.sql # 移除用户表 role 列
+└── V0.4__rename_preview_url_to_key.sql # preview_url → preview_key 重命名
 ```

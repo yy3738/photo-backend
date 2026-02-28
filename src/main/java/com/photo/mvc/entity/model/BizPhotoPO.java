@@ -19,8 +19,8 @@ public class BizPhotoPO {
     private String title;
     @Schema(description = "作品描述")
     private String description;
-    @Schema(description = "预览图URL")
-    private String previewUrl;
+    @Schema(description = "预览图OSS Key")
+    private String previewKey;
     @Schema(description = "原图OSS Key")
     private String originalKey;
     @Schema(description = "分类ID")

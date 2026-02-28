@@ -76,6 +76,15 @@ Authorization: Bearer {accessToken}
 
 统一使用 ISO 8601：`2026-02-21T10:00:00.000Z`
 
+### 1.7 MinIO 对象存储
+
+- **Endpoint**: `http://localhost:9000` (开发环境)
+- **Bucket**: `photo`
+- **文件组织**:
+  - 预览图: `photos/YYYY/MM/{uuid}_preview.{ext}` - 公开访问
+  - 原图: `photos/YYYY/MM/{uuid}_original.{ext}` - 私有，需签名URL
+- **URL有效期**: 预签名URL默认7天（上传）、5分钟（下载）
+
 ---
 
 ## 二、数据模型
@@ -421,7 +430,7 @@ Authorization: Bearer {accessToken}
 
 ```json
 {
-  "url": "https://oss.xxx.com/photos/xxx.jpg?Expires=...&Signature=...",
+  "url": "https://minio.xxx.com/photos/xxx.jpg?X-Amz-Algorithm=...",
   "expireAt": "ISO8601"
 }
 ```
@@ -430,11 +439,11 @@ Authorization: Bearer {accessToken}
 
 ---
 
-### 3.4 OSS 上传签名 `/upload`
+### 3.4 MinIO 上传签名 `/upload`
 
 #### GET /upload/signature
 
-获取 OSS 直传签名（需登录，摄影师/管理员）。
+获取 MinIO 直传签名（需登录，摄影师/管理员）。
 
 **Query 参数：**
 
@@ -447,19 +456,38 @@ Authorization: Bearer {accessToken}
 
 ```json
 {
-  "host": "https://bucket.oss-cn-hangzhou.aliyuncs.com",
-  "key": "photos/2026/02/uuid_original.jpg",
-  "policy": "base64_encoded_policy",
-  "accessId": "OSS_ACCESS_KEY_ID",
-  "signature": "签名字符串",
-  "expireAt": "ISO8601"
+  "host": "localhost:9000",
+  "key": "photo/2026/02/uuid_preview.jpg",
+  "formData": {
+    "key": "path/to/file.jpg",
+    "x-amz-algorithm": "AWS4-HMAC-SHA256",
+    "x-amz-credential": "...",
+    "x-amz-date": "...",
+    "policy": "...",
+    "x-amz-signature": "..."
+  }
 }
 ```
 
+**字段说明：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| host | string | MinIO 服务地址（不含协议） |
+| key | string | 文件存储路径（含文件名） |
+| policyBase64 | string | Base64 编码的 policy 策略 |
+| algorithm | string | 签名算法，固定 `AWS4-HMAC-SHA256` |
+| credential | string | 访问凭证（accessKey/日期/区域/服务/签名版本） |
+| date | string | 签名日期时间（ISO8601格式） |
+| expire | string | 签名有效期（秒），默认 604800（7天） |
+| signedHeaders | string | 已签名的 HTTP 头 |
+| signature | string | 请求签名 |
+
 **说明：**
-- 前端用此签名直接 POST 到 OSS，`success_action_status` 设为 `200`
+- 前端使用 `uni.uploadFile` 的 formData 方式上传（POST 方法）
 - 上传成功后前端将 `key` 传给后端创建作品接口
 - 限流：每用户每分钟 10 次
+- 注意：前端 formData 需要包含 `success_action_status: "200"`
 
 ---
 
@@ -570,12 +598,12 @@ Authorization: Bearer {accessToken}
 
 ```json
 {
-  "url": "https://oss.xxx.com/certificates/xxx.jpg?...",
+  "url": "https://minio.xxx.com/certificates/xxx.jpg?X-Amz-Algorithm=...",
   "expireAt": "ISO8601"
 }
 ```
 
-**说明：** 证书为图片格式（JPG/PNG），后端生成后存入 OSS，返回 5 分钟有效签名 URL，前端调用微信 API 保存到相册。
+**说明：** 证书为图片格式（JPG/PNG），后端生成后存入 MinIO，返回 5 分钟有效签名 URL，前端调用微信 API 保存到相册。
 
 **证书建议包含字段：** 授权编号、作品标题、作品预览图、摄影师昵称、被授权方联系方式、使用用途、使用场景、使用期限、授权日期、平台名称/Logo。
 

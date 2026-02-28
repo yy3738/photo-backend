@@ -19,8 +19,8 @@ public class BizLicensePO {
     private Long photoId;
     @Schema(description = "作品标题")
     private String photoTitle;
-    @Schema(description = "作品预览图URL")
-    private String photoPreviewUrl;
+    @Schema(description = "作品预览图OSS Key")
+    private String photoPreviewKey;
     @Schema(description = "申请人ID")
     private Long applicantId;
     @Schema(description = "摄影师ID")

@@ -1,33 +1,26 @@
 package com.photo.mvc.service;
 
+import com.photo.common.config.MinIOConfig;
+import com.photo.common.config.MinioTemplate;
 import com.photo.mvc.entity.vo.UploadSignatureVO;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Base64;
-import java.util.UUID;
+import java.util.Map;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class BizUploadService {
 
-    @Value("${oss.host:https://bucket.oss-cn-hangzhou.aliyuncs.com}")
-    private String ossHost;
+    private final MinIOConfig minIOConfig;
+    private final MinioTemplate minioTemplate;
 
-    @Value("${oss.access-key-id:}")
-    private String accessKeyId;
-
-    @Value("${oss.access-key-secret:}")
-    private String accessKeySecret;
-
-    @Value("${oss.bucket:photo-bucket}")
-    private String bucket;
-
+    /**
+     * 获取上传签名信息
+     * 返回预签名POST表单数据，前端使用 formData 方式上传
+     */
     public UploadSignatureVO getSignature(String filename, String type) {
         String ext = "";
         int dotIdx = filename.lastIndexOf('.');
@@ -35,27 +28,19 @@ public class BizUploadService {
             ext = filename.substring(dotIdx);
         }
 
-        String datePath = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM"));
-        String uuid = UUID.randomUUID().toString().replace("-", "");
-        String key = "photos/" + datePath + "/" + uuid + "_" + type + ext;
+        // 生成存储Key
+        String key = minioTemplate.generateKey(type, ext);
 
-        LocalDateTime expireAt = LocalDateTime.now().plusMinutes(30);
+        // 获取MinIO服务器地址（去掉协议前缀）
+        String host = minIOConfig.getEndpoint().replace("http://", "").replace("https://", "");
 
-        String policyJson = String.format(
-                "{\"expiration\":\"%s\",\"conditions\":[[\"content-length-range\",0,52428800],[\"eq\",\"$key\",\"%s\"]]}",
-                expireAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "Z",
-                key);
-        String policy = Base64.getEncoder().encodeToString(policyJson.getBytes(StandardCharsets.UTF_8));
-
-        String signature = "mock_signature_" + uuid.substring(0, 8);
+        // 获取预签名POST表单数据
+        Map<String, String> formData = minioTemplate.getPresignedPostFormData(key);
 
         UploadSignatureVO vo = new UploadSignatureVO();
-        vo.setHost(ossHost);
+        vo.setHost(host);
         vo.setKey(key);
-        vo.setPolicy(policy);
-        vo.setAccessId(accessKeyId);
-        vo.setSignature(signature);
-        vo.setExpireAt(expireAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        vo.setFormData(formData);
         return vo;
     }
 }

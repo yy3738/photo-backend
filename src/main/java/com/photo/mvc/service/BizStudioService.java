@@ -3,6 +3,7 @@ package com.photo.mvc.service;
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.photo.common.config.MinioTemplate;
 import com.photo.common.exception.BizException;
 import com.photo.common.result.PageQuery;
 import com.photo.common.result.PageResult;
@@ -13,6 +14,7 @@ import com.photo.mvc.entity.req.StudioPhotoStatusReq;
 import com.photo.mvc.entity.vo.PhotoVO;
 import com.photo.mvc.mapper.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +22,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class BizStudioService {
@@ -31,6 +34,7 @@ public class BizStudioService {
     private final BizOrderMapper bizOrderMapper;
     private final BizPointsRecordMapper bizPointsRecordMapper;
     private final BizLicenseMapper bizLicenseMapper;
+    private final MinioTemplate minioTemplate;
 
     private static final DateTimeFormatter ISO_FMT = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
@@ -60,11 +64,12 @@ public class BizStudioService {
         photo.setUserId(userId);
         photo.setTitle(req.getTitle());
         photo.setDescription(req.getDescription());
-        photo.setPreviewUrl(req.getPreviewUrl());
+        photo.setPreviewKey(req.getPreviewKey());
         photo.setOriginalKey(req.getOriginalKey());
         photo.setCategoryId(req.getCategoryId());
+        photo.setCategoryName(sysCategoryMapper.selectById(req.getCategoryId()).getName());
         photo.setPrice(req.getPrice());
-        photo.setAllowLicense(req.getAllowLicense() != null ? req.getAllowLicense() : 0);
+        photo.setAllowLicense(Boolean.TRUE.equals(req.getAllowLicense()) ? 1 : 0);
         photo.setStatus("pending");
         photo.setPurchaseCount(0);
         photo.setCreateBy(userId);
@@ -94,11 +99,11 @@ public class BizStudioService {
 
         photo.setTitle(req.getTitle());
         photo.setDescription(req.getDescription());
-        photo.setPreviewUrl(req.getPreviewUrl());
+        photo.setPreviewKey(req.getPreviewKey());
         photo.setOriginalKey(req.getOriginalKey());
         photo.setCategoryId(req.getCategoryId());
         photo.setPrice(req.getPrice());
-        photo.setAllowLicense(req.getAllowLicense() != null ? req.getAllowLicense() : 0);
+        photo.setAllowLicense(Boolean.TRUE.equals(req.getAllowLicense()) ? 1 : 0);
         photo.setStatus("pending");
         photo.setRejectReason(null);
         photo.setUpdateBy(userId);
@@ -127,6 +132,19 @@ public class BizStudioService {
                 new LambdaQueryWrapper<BizOrderPO>().eq(BizOrderPO::getPhotoId, photoId));
         if (orderCount > 0) {
             throw new BizException(400, "已有用户购买，不允许删除");
+        }
+
+        // 删除MinIO中的文件
+        try {
+            if (photo.getPreviewKey() != null && !photo.getPreviewKey().isEmpty()) {
+                minioTemplate.delete(photo.getPreviewKey());
+            }
+            if (photo.getOriginalKey() != null && !photo.getOriginalKey().isEmpty()) {
+                minioTemplate.delete(photo.getOriginalKey());
+            }
+        } catch (Exception e) {
+            log.error("删除MinIO文件失败", e);
+            // 继续执行数据库删除，MinIO文件可后续清理
         }
 
         bizPhotoTagMapper.delete(
@@ -310,12 +328,25 @@ public class BizStudioService {
         }
     }
 
+    /**
+     * 从MinIO key构建预览图公开访问URL
+     */
+    private String buildPreviewUrl(String previewKey) {
+        if (previewKey == null || previewKey.isEmpty()) {
+            return null;
+        }
+        if (previewKey.startsWith("http://") || previewKey.startsWith("https://")) {
+            return previewKey;
+        }
+        return minioTemplate.getPresignedDownloadUrl(previewKey, 60);
+    }
+
     private PhotoVO toPhotoVO(BizPhotoPO photo) {
         PhotoVO vo = new PhotoVO();
         vo.setId(String.valueOf(photo.getId()));
         vo.setTitle(photo.getTitle());
         vo.setDescription(photo.getDescription());
-        vo.setPreviewUrl(photo.getPreviewUrl());
+        vo.setPreviewUrl(buildPreviewUrl(photo.getPreviewKey()));
         vo.setOriginalKey(photo.getOriginalKey());
         vo.setCategoryId(String.valueOf(photo.getCategoryId()));
         vo.setPrice(photo.getPrice());

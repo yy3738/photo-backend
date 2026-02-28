@@ -18,9 +18,9 @@ public class StudioPhotoReq {
     @Schema(description = "作品描述")
     private String description;
 
-    @Schema(description = "预览图URL")
-    @NotBlank(message = "预览图URL不能为空")
-    private String previewUrl;
+    @Schema(description = "预览图OSS Key")
+    @NotBlank(message = "预览图Key不能为空")
+    private String previewKey;
 
     @Schema(description = "原图OSS Key")
     @NotBlank(message = "原图Key不能为空")
@@ -37,6 +37,6 @@ public class StudioPhotoReq {
     @NotNull(message = "价格不能为空")
     private Integer price;
 
-    @Schema(description = "是否允许授权：0否 1是")
-    private Integer allowLicense;
+    @Schema(description = "是否允许授权")
+    private Boolean allowLicense;
 }
