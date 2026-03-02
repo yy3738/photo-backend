@@ -64,5 +64,7 @@ public class PhotoVO {
         private String nickname;
         @Schema(description = "摄影师头像")
         private String avatar;
+        @Schema(description = "已发布作品数量")
+        private Integer worksCount;
     }
 }

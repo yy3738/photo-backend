@@ -51,6 +51,7 @@ public class BizLicenseService {
         license.setScene(req.getScene());
         license.setDuration(req.getDuration());
         license.setContact(req.getContact());
+        license.setPhotographerId(photo.getUserId());
         license.setStatus("pending_admin");
         license.setCreateBy(userId);
         license.setUpdateBy(userId);

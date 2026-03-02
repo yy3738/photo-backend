@@ -273,6 +273,10 @@ public class AdminService {
             map.put("photoId", String.valueOf(l.getPhotoId()));
             map.put("photoTitle", l.getPhotoTitle());
             map.put("applicantId", String.valueOf(l.getApplicantId()));
+            SysUserPO sysUserPO = sysUserMapper.selectById(l.getApplicantId());
+            if (sysUserPO != null) {
+                map.put("applicantNickName", sysUserPO.getNickname());
+            }
             map.put("purpose", l.getPurpose());
             map.put("scene", l.getScene());
             map.put("duration", l.getDuration());

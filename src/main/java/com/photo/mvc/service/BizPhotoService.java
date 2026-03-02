@@ -272,6 +272,12 @@ public class BizPhotoService {
             info.setId(String.valueOf(photographer.getId()));
             info.setNickname(photographer.getNickname());
             info.setAvatar(photographer.getAvatar());
+            // 查询摄影师已发布作品数量
+            Long worksCount = bizPhotoMapper.selectCount(
+                    new LambdaQueryWrapper<BizPhotoPO>()
+                            .eq(BizPhotoPO::getUserId, photographer.getId())
+                            .eq(BizPhotoPO::getStatus, "approved"));
+            info.setWorksCount(worksCount.intValue());
             vo.setPhotographer(info);
         }
 
