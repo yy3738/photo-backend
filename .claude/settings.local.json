@@ -20,11 +20,12 @@
       "Bash(tail:*)",
       "Bash(npx:*)",
       "Bash(mysql:*)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(cp:*)"
     ]
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "mysql"
-  ],
-  "enableAllProjectMcpServers": true
+  ]
 }
