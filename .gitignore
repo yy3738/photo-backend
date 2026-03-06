@@ -31,3 +31,6 @@ application-local.yml
 
 ### Git Worktrees ###
 .worktrees/
+
+### Claude ###
+.claude
