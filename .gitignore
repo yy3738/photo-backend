@@ -28,3 +28,6 @@ logs/
 ### Env ###
 *.env
 application-local.yml
+
+### Git Worktrees ###
+.worktrees/
